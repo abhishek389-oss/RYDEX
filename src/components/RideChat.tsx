@@ -1,133 +1,152 @@
 "use client"
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import axios from 'axios'
+import { Send, Loader2 } from 'lucide-react'
 import { getSocket } from '@/lib/socket'
-import { Loader2, Send, Sparkles } from 'lucide-react'
 
-interface ChatProps {
+interface Message {
+  _id?: string
+  senderRole: "driver" | "user"
+  text: string
+  createdAt?: string
+}
+
+interface RideChatProps {
   bookingId: string
   currentRole: "driver" | "user"
   otherName: string
 }
 
-export default function RideChat({ bookingId, currentRole, otherName }: ChatProps) {
-  const [messages, setMessages] = useState<any[]>([])
-  const [text, setText] = useState("")
-  const [suggestions, setSuggestions] = useState<string[]>([])
-  const [showAi, setShowAi] = useState(false)
-  const [aiLoading, setAiLoading] = useState(false)
+export default function RideChat({ bookingId, currentRole, otherName }: RideChatProps) {
+  const [messages, setMessages] = useState<Message[]>([])
+  const [inputMessage, setInputMessage] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const fetchMessages = async () => {
-    try {
-      const { data } = await axios.post("/api/chat/get-all", { bookingId })
-      setMessages(data || [])
-    } catch (err) {
-      console.log(err)
-    }
-  }
-
-  const fetchAiSuggestions = async () => {
-    setAiLoading(true)
-    setShowAi(true)
-    try {
-      const { data } = await axios.post("/api/chat/ai-suggestions", {
-        lastMessage: messages[messages.length - 1]?.text || "",
-        role: currentRole,
-      })
-      setSuggestions(data.suggestions || [])
-    } catch (err) {
-      console.log(err)
-    } finally {
-      setAiLoading(false)
-    }
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
   useEffect(() => {
+    if (!bookingId) return
+
+    const fetchMessages = async () => {
+      try {
+        const { data } = await axios.get(`/api/chat/get-all?bookingId=${bookingId}`)
+        if (data?.messages) {
+          setMessages(data.messages)
+        }
+      } catch (err) {
+        console.error("Fetch chat error:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     fetchMessages()
+  }, [bookingId])
+
+  useEffect(() => {
+    if (!bookingId) return
 
     const socket = getSocket()
-    socket.on("chat_message", (newMsg: any) => {
-      setMessages((prev) => [...prev, newMsg])
-    })
+
+    socket.emit("join_ride", bookingId)
+
+    const handleNewMessage = (msg: Message) => {
+      setMessages((prev) => {
+        if (msg._id && prev.some((m) => m._id === msg._id)) return prev
+        return [...prev, msg]
+      })
+    }
+
+    socket.on("chat_message", handleNewMessage)
 
     return () => {
-      socket.off("chat_message")
+      socket.off("chat_message", handleNewMessage)
     }
   }, [bookingId])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    scrollToBottom()
   }, [messages])
 
-  const handleSendMessage = async (msgText?: string) => {
-    const messageToSend = msgText || text
-    if (!messageToSend.trim()) return
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const text = inputMessage.trim()
+    if (!text || sending) return
 
-    setText("")
-    setShowAi(false)
+    setSending(true)
+    const socket = getSocket()
 
     try {
       const { data } = await axios.post("/api/chat/send", {
         bookingId,
-        sender: currentRole,
-        text: messageToSend,
+        senderRole: currentRole,
+        text,
       })
 
-      const socket = getSocket()
-      socket.emit("chat_message", data)
+      const newMsg: Message = data?.message || {
+        senderRole: currentRole,
+        text,
+        createdAt: new Date().toISOString(),
+      }
+
+      setMessages((prev) => [...prev, newMsg])
+      setInputMessage("")
+
+      socket.emit("chat_message", {
+        bookingId,
+        ...newMsg,
+      })
     } catch (err) {
-      console.log(err)
+      console.error("Send message error:", err)
+    } finally {
+      setSending(false)
     }
   }
 
   return (
-    <div className="flex flex-col h-full bg-white text-zinc-900">
-      <div className="px-3 py-2 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-zinc-900 text-white flex items-center justify-center text-[10px] font-bold">
-            {otherName[0]?.toUpperCase() || "C"}
-          </div>
-          <div>
-            <p className="text-xs font-bold leading-tight">{otherName}</p>
-            <p className="text-[10px] text-emerald-600 font-semibold">Active Now</p>
-          </div>
+    <div className="flex flex-col h-full bg-white">
+      {/* Header */}
+      <div className="px-4 py-2.5 bg-zinc-950 text-white flex items-center justify-between shrink-0">
+        <div>
+          <p className="text-xs font-bold leading-tight">{otherName}</p>
+          <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Live Chat
+          </span>
         </div>
-
-        <button
-          onClick={() => fetchAiSuggestions()}
-          className="flex items-center gap-1 text-[11px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-2 py-1 rounded-lg transition-colors cursor-pointer"
-        >
-          <Sparkles size={12} />
-          <span>Quick AI</span>
-        </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2.5 space-y-2 text-xs">
-        {messages.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-zinc-400 text-xs">
-            No messages yet. Say hello!
+      <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-zinc-50/50">
+        {loading ? (
+          <div className="h-full flex items-center justify-center">
+            <Loader2 size={18} className="animate-spin text-zinc-400" />
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-center p-4">
+            <p className="text-xs font-medium text-zinc-400">No messages yet.</p>
+            <p className="text-[10px] text-zinc-400">Start the conversation with {otherName}.</p>
           </div>
         ) : (
-          messages.map((m, i) => {
-            const isMine = m.sender === currentRole
+          messages.map((m, index) => {
+            const isMe = m.senderRole === currentRole
             return (
               <div
-                key={m._id || i}
-                className={`flex flex-col ${isMine ? "items-end" : "items-start"}`}
+                key={m._id || index}
+                className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
               >
                 <div
-                  className={`max-w-[80%] px-3 py-1.5 rounded-2xl ${
-                    isMine
-                      ? "bg-zinc-900 text-white rounded-br-xs"
-                      : "bg-zinc-100 text-zinc-800 rounded-bl-xs"
+                  className={`max-w-[75%] px-3 py-2 rounded-2xl text-xs leading-relaxed ${
+                    isMe
+                      ? "bg-zinc-950 text-white rounded-br-xs"
+                      : "bg-white text-zinc-900 border border-zinc-200 shadow-2xs rounded-bl-xs"
                   }`}
                 >
-                  <p className="wrap-break-words leading-relaxed">{m.text}</p>
+                  {m.text}
                 </div>
-                <span className="text-[8px] text-zinc-400 mt-0.5 px-1 font-medium">
-                  {new Date(m.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
               </div>
             )
           })
@@ -135,52 +154,20 @@ export default function RideChat({ bookingId, currentRole, otherName }: ChatProp
         <div ref={messagesEndRef} />
       </div>
 
-      {showAi && (
-        <div className="p-2 bg-purple-50/50 border-t border-purple-100 space-y-1">
-          <div className="flex items-center justify-between text-[10px] font-bold text-purple-700 px-1">
-            <span>AI Suggestions</span>
-            <button onClick={() => setShowAi(false)} className="cursor-pointer text-zinc-400 hover:text-zinc-600">✕</button>
-          </div>
-          {aiLoading ? (
-            <div className="flex items-center justify-center py-1.5">
-              <Loader2 size={13} className="animate-spin text-purple-600" />
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-1">
-              {suggestions.map((s, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSendMessage(s)}
-                  className="bg-white hover:bg-purple-100 text-zinc-800 text-[10px] font-medium px-2 py-1 rounded-lg border border-purple-200/60 shadow-2xs transition-colors cursor-pointer text-left"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          handleSendMessage()
-        }}
-        className="p-2 border-t border-zinc-100 flex items-center gap-1.5 bg-white"
-      >
+      <form onSubmit={handleSendMessage} className="p-2 border-t border-zinc-100 flex gap-1.5 bg-white shrink-0">
         <input
           type="text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Type message..."
-          className="flex-1 bg-zinc-100 rounded-xl px-3 py-1.5 text-xs text-zinc-900 outline-none focus:ring-1 focus:ring-zinc-800"
+          value={inputMessage}
+          onChange={(e) => setInputMessage(e.target.value)}
+          placeholder={`Message ${otherName}...`}
+          className="flex-1 bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-xs text-zinc-900 outline-none focus:border-zinc-900 focus:bg-white transition"
         />
         <button
           type="submit"
-          disabled={!text.trim()}
-          className="w-7 h-7 rounded-xl bg-zinc-900 hover:bg-black disabled:opacity-40 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+          disabled={!inputMessage.trim() || sending}
+          className="w-9 h-9 rounded-xl bg-zinc-950 hover:bg-black text-white flex items-center justify-center transition disabled:opacity-40 cursor-pointer shrink-0"
         >
-          <Send size={12} />
+          {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
         </button>
       </form>
     </div>

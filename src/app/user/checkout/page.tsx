@@ -95,7 +95,18 @@ function CheckoutContent() {
       const { data } = await axios.get("/api/user/active-ride");
       if (data?.booking) {
         setBooking(data.booking);
-        setStatus(data.booking.bookingStatus || "idle");
+        const b = data.booking;
+
+        // रिफ्रेश बग फिक्स: अगर ड्राइवर एक्सेप्ट कर चुका है लेकिन पेमेंट पेंडिंग है तो सीधे पेमेंट स्क्रीन पर रोके
+        if (b.bookingStatus === "requested") {
+          setStatus("requested");
+        } else if (b.paymentStatus === "pending" || b.bookingStatus === "awaiting_payment") {
+          setStatus("payment");
+        } else if (b.bookingStatus === "confirmed" && (b.paymentStatus === "paid" || b.paymentStatus === "cash")) {
+          setStatus("confirmed");
+        } else {
+          setStatus(b.bookingStatus || "idle");
+        }
       }
     } catch (error) {
       console.log(error);

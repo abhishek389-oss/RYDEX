@@ -3,20 +3,20 @@ import React, { useEffect, useState } from 'react'
 import axios from 'axios'
 import { useRouter } from 'next/navigation'
 import { motion } from 'motion/react'
-import { 
-  Bike, 
-  Car, 
-  Truck, 
-  MapPin, 
-  Navigation, 
-  IndianRupee, 
-  Clock, 
-  Calendar, 
-  ArrowRight, 
-  Loader2, 
-  CheckCircle2, 
-  XCircle, 
-  AlertCircle 
+import {
+  Bike,
+  Car,
+  Truck,
+  MapPin,
+  Navigation,
+  IndianRupee,
+  Clock,
+  Calendar,
+  ArrowRight,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  AlertCircle
 } from 'lucide-react'
 import Nav from '@/components/Nav'
 
@@ -75,8 +75,8 @@ export default function UserBookingsPage() {
       const list = Array.isArray(data?.bookings)
         ? data.bookings
         : Array.isArray(data)
-        ? data
-        : []
+          ? data
+          : []
       setBookings(list)
     } catch (error) {
       console.log("Fetch user bookings error:", error)
@@ -122,7 +122,7 @@ export default function UserBookingsPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white px-4 pt-24 pb-8 max-w-4xl mx-auto">
-      <Nav/>
+      <Nav />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-white">Your Rides</h1>
@@ -130,17 +130,15 @@ export default function UserBookingsPage() {
             View and track your previous and active bookings
           </p>
         </div>
-
         <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 p-1 rounded-xl self-start sm:self-auto">
           {["all", "active", "completed", "cancelled"].map((tab) => (
             <button
               key={tab}
               onClick={() => setFilter(tab)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors cursor-pointer ${
-                filter === tab
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors cursor-pointer ${filter === tab
                   ? "bg-white text-zinc-950 shadow-xs"
                   : "text-zinc-400 hover:text-white"
-              }`}
+                }`}
             >
               {tab}
             </button>

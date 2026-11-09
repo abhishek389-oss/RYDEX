@@ -25,6 +25,23 @@ function Nav() {
   const [pendingCount, setPendingCount] = useState<number>(0)
 
   const fetchPendingCount = async () => {
+
+    useEffect(() => {
+  const registerSocket = async () => {
+    try {
+      const { data } = await axios.get("/api/auth/user/me")
+      if (data?.user?._id) {
+        const socket = getSocket()
+        socket.emit("identity", data.user._id)
+      }
+    } catch (e) {
+    }
+  }
+
+  registerSocket()
+}, [])
+    
+    
     try {
       const { data } = await axios.get('/api/partner/bookings/pending-request-count')
       setPendingCount(typeof data === "number" ? data : (data?.count ?? 0))

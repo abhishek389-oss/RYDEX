@@ -72,6 +72,12 @@ function RideTrackingContent() {
       const { data } = await axios.get(`/api/user/booking/${bookingId}`)
       const b = data?.booking || data
       if (b) {
+        // पेमेंट बाईपास प्रिवेंशन: अगर पेमेंट पेंडिंग है तो सीधे चेकआउट पर रीडायरेक्ट करें
+        if (b.paymentStatus === "pending" || b.bookingStatus === "awaiting_payment") {
+          router.push(`/user/checkout?pickup=${encodeURIComponent(b.pickUpAddress || "")}&drop=${encodeURIComponent(b.dropAddress || "")}&fare=${b.fare || 0}&vehicle=${b.vehicle?.type || "car"}`);
+          return;
+        }
+
         setBooking(b)
         setStatus(b.bookingStatus)
 
