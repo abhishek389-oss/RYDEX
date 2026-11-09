@@ -25,23 +25,6 @@ function Nav() {
   const [pendingCount, setPendingCount] = useState<number>(0)
 
   const fetchPendingCount = async () => {
-
-    useEffect(() => {
-  const registerSocket = async () => {
-    try {
-      const { data } = await axios.get("/api/auth/user/me")
-      if (data?.user?._id) {
-        const socket = getSocket()
-        socket.emit("identity", data.user._id)
-      }
-    } catch (e) {
-    }
-  }
-
-  registerSocket()
-}, [])
-    
-    
     try {
       const { data } = await axios.get('/api/partner/bookings/pending-request-count')
       setPendingCount(typeof data === "number" ? data : (data?.count ?? 0))
@@ -76,8 +59,19 @@ function Nav() {
     setProfileOpen(false)
   }
 
-  const hideNavbar = 
-    pathName?.startsWith('/user/ride/') || 
+  const handleBookingsClick = (e: React.MouseEvent) => {
+    if (!userData) {
+      e.preventDefault()
+      const trigger = document.getElementById("hidden-auth-trigger")
+      if (trigger) trigger.click()
+    } else {
+      router.push("/user/bookings")
+    }
+    setMenuOpen(false)
+  }
+
+  const hideNavbar =
+    pathName?.startsWith('/user/ride/') ||
     pathName === '/partner/active-ride'
 
   if (hideNavbar) {
@@ -86,6 +80,12 @@ function Nav() {
 
   return (
     <>
+      <div className="hidden">
+        <AuthModel>
+          <span id="hidden-auth-trigger"  aria-hidden="true" />
+        </AuthModel>
+      </div>
+
       <motion.div
         initial={{ y: -60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -93,7 +93,7 @@ function Nav() {
       >
         <div className='max-w-7xl mx-auto px-4 md:px-8 flex items-center justify-between'>
           <Link href="/" className="flex items-center">
-            <Image src={"/logo.png"} alt='logo' width={34} height={34} priority />
+            <Image src={"/logo.png"} alt='logo' width={34} height={34} priority className="w-auto h-auto" />
           </Link>
 
           <div className='hidden md:flex items-center gap-7'>
@@ -101,18 +101,16 @@ function Nav() {
               <>
                 <Link
                   href="/"
-                  className={`text-[13px] font-medium transition ${
-                    pathName === "/" ? "text-white" : "text-gray-400 hover:text-white"
-                  }`}
+                  className={`text-[13px] font-medium transition ${pathName === "/" ? "text-white" : "text-gray-400 hover:text-white"
+                    }`}
                 >
                   Home
                 </Link>
 
                 <Link
                   href="/partner/pending-requests"
-                  className={`relative text-[13px] font-medium transition ${
-                    pathName === "/partner/pending-requests" ? "text-white" : "text-gray-400 hover:text-white"
-                  }`}
+                  className={`relative text-[13px] font-medium transition ${pathName === "/partner/pending-requests" ? "text-white" : "text-gray-400 hover:text-white"
+                    }`}
                 >
                   <span>Pending Requests</span>
                   <span className='absolute -top-2.5 -right-5 w-4.5 h-4.5 rounded-full bg-white text-black text-[10px] font-black flex items-center justify-center shadow-xs'>
@@ -122,18 +120,16 @@ function Nav() {
 
                 <Link
                   href="/partner/bookings"
-                  className={`text-[13px] font-medium transition ${
-                    pathName === "/partner/bookings" ? "text-white" : "text-gray-400 hover:text-white"
-                  }`}
+                  className={`text-[13px] font-medium transition ${pathName === "/partner/bookings" ? "text-white" : "text-gray-400 hover:text-white"
+                    }`}
                 >
                   Bookings
                 </Link>
 
                 <Link
                   href="/partner/active-ride"
-                  className={`text-[13px] font-medium transition ${
-                    pathName === "/partner/active-ride" ? "text-white" : "text-gray-400 hover:text-white"
-                  }`}
+                  className={`text-[13px] font-medium transition ${pathName === "/partner/active-ride" ? "text-white" : "text-gray-400 hover:text-white"
+                    }`}
                 >
                   Active Ride
                 </Link>
@@ -147,13 +143,27 @@ function Nav() {
                   href = `/${i.toLowerCase().replace(/\s+/g, "-")}`
                 }
                 const Active = href === pathName
+
+                if (i === "Bookings") {
+                  return (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={handleBookingsClick}
+                      className={`text-[13px] font-medium transition cursor-pointer ${Active ? "text-white" : "text-gray-400 hover:text-white"
+                        }`}
+                    >
+                      {i}
+                    </button>
+                  )
+                }
+
                 return (
                   <Link
                     key={index}
                     href={href}
-                    className={`text-[13px] font-medium transition ${
-                      Active ? "text-white" : "text-gray-400 hover:text-white"
-                    }`}
+                    className={`text-[13px] font-medium transition ${Active ? "text-white" : "text-gray-400 hover:text-white"
+                      }`}
                   >
                     {i}
                   </Link>
@@ -282,9 +292,8 @@ function Nav() {
                     <Link
                       href="/"
                       onClick={() => setMenuOpen(false)}
-                      className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between ${
-                        pathName === "/" ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
-                      }`}
+                      className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between ${pathName === "/" ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
+                        }`}
                     >
                       <span>Home</span>
                       {pathName === "/" && <span className='w-1.5 h-1.5 rounded-full bg-white' />}
@@ -293,9 +302,8 @@ function Nav() {
                     <Link
                       href="/partner/pending-requests"
                       onClick={() => setMenuOpen(false)}
-                      className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between ${
-                        pathName === "/partner/pending-requests" ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
-                      }`}
+                      className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between ${pathName === "/partner/pending-requests" ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
+                        }`}
                     >
                       <div className='flex items-center gap-2'>
                         <span>Pending Requests</span>
@@ -309,9 +317,8 @@ function Nav() {
                     <Link
                       href="/partner/bookings"
                       onClick={() => setMenuOpen(false)}
-                      className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between ${
-                        pathName === "/partner/bookings" ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
-                      }`}
+                      className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between ${pathName === "/partner/bookings" ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
+                        }`}
                     >
                       <span>Bookings</span>
                       {pathName === "/partner/bookings" && <span className='w-1.5 h-1.5 rounded-full bg-white' />}
@@ -320,9 +327,8 @@ function Nav() {
                     <Link
                       href="/partner/active-ride"
                       onClick={() => setMenuOpen(false)}
-                      className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between ${
-                        pathName === "/partner/active-ride" ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
-                      }`}
+                      className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between ${pathName === "/partner/active-ride" ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
+                        }`}
                     >
                       <span>Active Ride</span>
                       {pathName === "/partner/active-ride" && <span className='w-1.5 h-1.5 rounded-full bg-white' />}
@@ -338,14 +344,28 @@ function Nav() {
                     }
                     const Active = href === pathName
 
+                    if (i === "Bookings") {
+                      return (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={handleBookingsClick}
+                          className={`w-full px-5 py-3 text-sm font-medium transition flex items-center justify-between cursor-pointer text-left ${Active ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
+                            }`}
+                        >
+                          <span>{i}</span>
+                          {Active && <span className='w-1.5 h-1.5 rounded-full bg-white' />}
+                        </button>
+                      )
+                    }
+
                     return (
                       <Link
                         key={index}
                         href={href}
                         onClick={() => setMenuOpen(false)}
-                        className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between ${
-                          Active ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
-                        }`}
+                        className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between ${Active ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
+                          }`}
                       >
                         <span>{i}</span>
                         {Active && <span className='w-1.5 h-1.5 rounded-full bg-white' />}
