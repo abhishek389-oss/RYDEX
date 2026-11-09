@@ -33,7 +33,18 @@ function PricingModal({ open, onClose, data }: PropsType) {
             setWaitingCharge(v?.waitingCharge !== undefined && v?.waitingCharge !== null ? v.waitingCharge.toString() : "")
         }
     }, [data])
+
+    // Validations: Image + तीनों Fields अनिवार्य
+    const hasImage = Boolean(image || preview)
+    const isBaseFareValid = baseFare.trim() !== "" && !isNaN(Number(baseFare)) && Number(baseFare) >= 0
+    const isPricePerKMValid = pricePerKM.trim() !== "" && !isNaN(Number(pricePerKM)) && Number(pricePerKM) > 0
+    const isWaitingChargeValid = waitingCharge.trim() !== "" && !isNaN(Number(waitingCharge)) && Number(waitingCharge) >= 0
+
+    const canSubmit = hasImage && isBaseFareValid && isPricePerKMValid && isWaitingChargeValid
+
     const handleSubmit = async () => {
+        if (!canSubmit || loading) return
+
         setLoading(true)
         try {
             const formData = new FormData()
@@ -49,7 +60,7 @@ function PricingModal({ open, onClose, data }: PropsType) {
             setLoading(false)
             onClose()
         } catch (error: any) {
-            console.log(error.response.data.message ?? error)
+            console.log(error.response?.data?.message ?? error)
             setLoading(false)
         }
     }
@@ -126,12 +137,14 @@ function PricingModal({ open, onClose, data }: PropsType) {
                                 </label>
                             </div>
 
+                            {/* Base Fare */}
                             <div>
                                 <p className='text-xs font-semibold text-gray-700 mb-1'>Base Fare</p>
                                 <div className='flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 bg-white focus-within:border-black focus-within:ring-1 focus-within:ring-black transition shadow-2xs'>
                                     <IndianRupee size={15} className='text-gray-500 shrink-0' />
                                     <input
-                                        type="text"
+                                        type="number"
+                                        min="0"
                                         placeholder='Base Fare'
                                         value={baseFare}
                                         onChange={(e) => setBaseFare(e.target.value)}
@@ -146,7 +159,8 @@ function PricingModal({ open, onClose, data }: PropsType) {
                                 <div className='flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 bg-white focus-within:border-black focus-within:ring-1 focus-within:ring-black transition shadow-2xs'>
                                     <IndianRupee size={15} className='text-gray-500 shrink-0' />
                                     <input
-                                        type="text"
+                                        type="number"
+                                        min="1"
                                         placeholder='Price Per Km'
                                         value={pricePerKM}
                                         onChange={(e) => setPricePerKM(e.target.value)}
@@ -161,7 +175,8 @@ function PricingModal({ open, onClose, data }: PropsType) {
                                 <div className='flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 bg-white focus-within:border-black focus-within:ring-1 focus-within:ring-black transition shadow-2xs'>
                                     <IndianRupee size={15} className='text-gray-500 shrink-0' />
                                     <input
-                                        type="text"
+                                        type="number"
+                                        min="0"
                                         placeholder='Waiting Charge'
                                         value={waitingCharge}
                                         onChange={(e) => setWaitingCharge(e.target.value)}
@@ -180,8 +195,8 @@ function PricingModal({ open, onClose, data }: PropsType) {
                             </button>
                             <button
                                 onClick={handleSubmit}
-                                disabled={loading}
-                                className='flex-1 bg-black hover:bg-neutral-800 text-white rounded-xl py-2 text-xs sm:text-sm font-semibold transition cursor-pointer shadow-xs disabled:opacity-50'
+                                disabled={!canSubmit || loading}
+                                className='flex-1 bg-black hover:bg-neutral-800 text-white rounded-xl py-2 text-xs sm:text-sm font-semibold transition cursor-pointer shadow-xs disabled:opacity-40 disabled:cursor-not-allowed'
                             >
                                 {loading ? "Saving..." : "Save"}
                             </button>

@@ -160,7 +160,7 @@ export default function PartnerActiveRidePage() {
 
   const displayEta = status === "confirmed" ? etaToPickup : etaToDrop
   const displayDistance = status === "confirmed" ? distanceToPickup : distanceToDrop
-  const canChat = status === "confirmed"
+  const canChat = status === "confirmed" || status=="started"
 
   const onChatToggle = () => {
     setChatOpen((prev) => !prev)

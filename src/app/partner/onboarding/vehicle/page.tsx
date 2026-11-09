@@ -119,9 +119,7 @@ function page() {
                       ${active
                           ? "text-gray-300"
                           : "text-gray-500"
-                        }`}>
-                      {v.desc}
-                    </p>
+                        }`}>{v.desc}</p>
                   </motion.div>
                 )
               })}
@@ -162,7 +160,9 @@ function page() {
         <motion.button
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => handleVehicle()}
+          onClick={() => {handleVehicle(),
+          router.push("/partner/onboarding/documents")
+          }}
           disabled={loading}
           className="mt-6 w-full h-11 rounded-xl bg-black text-white text-xs sm:text-sm font-semibold flex
         items-center justify-center gap-2 disabled:opacity-40 transition cursor-pointer"

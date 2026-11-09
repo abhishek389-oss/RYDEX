@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import User from "@/models/user.model";
+import PartnerBank from "@/models/partnerBank.model";
 import { auth } from "@/auth";
 
 export async function GET() {
@@ -16,24 +17,40 @@ export async function GET() {
     }
 
     const user = await User.findOne({ email: session.user.email });
-
-    if (!user || !user.partnerBank) {
+    if (!user) {
       return NextResponse.json(
-        { message: "Bank details not found" },
+        { message: "User not found" },
         { status: 404 }
+      );
+    }
+
+    const partnerBank = await PartnerBank.findOne({ owner: user._id });
+
+    if (!partnerBank) {
+      return NextResponse.json(
+        {
+          partnerBank: {
+            accountHolder: "",
+            accountNumber: "",
+            ifsc: "",
+            upi: "",
+          },
+          mobileNumber: user.mobileNumber || "",
+        },
+        { status: 200 }
       );
     }
 
     return NextResponse.json(
       {
-        partnerBank: user.partnerBank,
-        mobileNumber: user.mobileNumber,
+        partnerBank,
+        mobileNumber: user.mobileNumber || "",
       },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json(
-      { message: "Failed to fetch bank details", error },
+      { message: "Failed to fetch bank details", error: error.message },
       { status: 500 }
     );
   }
@@ -51,23 +68,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { accountHolder, accountNumber, ifsc, upi, mobileNumber } = await req.json();
-
-    const user = await User.findOneAndUpdate(
-      { email: session.user.email },
-      {
-        partnerBank: {
-          accountHolder,
-          accountNumber,
-          ifsc,
-          upi,
-        },
-        mobileNumber,
-        partnerOnBoardingSteps: 3,
-      },
-      { new: true }
-    );
-
+    const user = await User.findOne({ email: session.user.email });
     if (!user) {
       return NextResponse.json(
         { message: "User not found" },
@@ -75,13 +76,33 @@ export async function POST(req: Request) {
       );
     }
 
+    const { accountHolder, accountNumber, ifsc, upi, mobileNumber } = await req.json();
+
+    const partnerBank = await PartnerBank.findOneAndUpdate(
+      { owner: user._id },
+      {
+        owner: user._id,
+        accountHolder,
+        accountNumber,
+        ifsc,
+        upi: upi || "",
+        status: "added",
+      },
+      { new: true, upsert: true }
+    );
+
+    user.mobileNumber = mobileNumber;
+    user.partnerOnBoardingSteps = 3;
+    user.partnerStatus = "pending";
+    await user.save();
+
     return NextResponse.json(
-      { message: "Bank details saved successfully", user },
+      { message: "Bank details saved successfully", partnerBank, user },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json(
-      { message: "Failed to save bank details", error },
+      { message: "Failed to save bank details", error: error.message },
       { status: 500 }
     );
   }

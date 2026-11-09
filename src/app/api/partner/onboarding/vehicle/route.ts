@@ -79,6 +79,7 @@ export async function POST(req: Request) {
       });
     }
 
+    user.role = "partner"
     user.partnerOnBoardingSteps = 1;
     await user.save();
 

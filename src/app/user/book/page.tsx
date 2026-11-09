@@ -2,7 +2,7 @@
 import Nav from '@/components/Nav'
 import { VehicleType } from '@/models/vehicle.model'
 import axios from 'axios'
-import { ArrowLeft, Bike, Car, CheckCircle, ChevronRight, LocateFixed, MapPin, Navigation, Phone, Truck } from 'lucide-react'
+import { ArrowLeft, Bike, Car, CheckCircle, ChevronRight, CircleDashed, LocateFixed, MapPin, Navigation, Phone, Truck } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useRouter } from 'next/navigation'
 import React, { useState } from 'react'
@@ -46,6 +46,7 @@ function page() {
   const [dropLatitude, setDropLatitude] = useState<Number>();
   const [dropLongitude, setDropLongitude] = useState<Number>();
   const [locating, setLocating] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [pickUpSuggestions, setPickUpSuggestions] = useState<Place[]>([]);
   const [dropSuggestions, setDropSuggestions] = useState<Place[]>([]);
 
@@ -406,14 +407,19 @@ function page() {
             >
               <motion.button
                 whileTap={{ scale: 0.98 }}
-                whileHover={canContinue ? { scale: 1.01 } : {}}
-                disabled={!canContinue}
+                whileHover={canContinue && !loading ? { scale: 1.01 } : {}}
+                disabled={!canContinue || loading}
                 onClick={() => {
+                  setLoading(true)
                   router.push(`/user/search?pickup=${encodeURIComponent(pickUp)}&drop=${encodeURIComponent(drop)}&vehicle=${vehicle}&mobile=${encodeURIComponent(mobile)}&pickuplat=${pickUpLatitude}&pickuplon=${pickUpLongitude}&droplat=${dropLatitude}&droplon=${dropLongitude}`)
                 }}
                 className='w-full h-11 rounded-xl bg-zinc-900 hover:bg-black disabled:opacity-40 text-white font-bold text-xs sm:text-sm tracking-wide flex items-center justify-center gap-2 transition-all shadow-xs disabled:shadow-none cursor-pointer disabled:cursor-not-allowed'
               >
-                <span>Continue</span>
+                {loading ? (
+                  <CircleDashed size={16} className='text-white animate-spin' />
+                ) : (
+                  <span>Continue</span>
+                )}
               </motion.button>
             </motion.div>
           </div>

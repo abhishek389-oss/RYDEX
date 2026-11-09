@@ -10,7 +10,6 @@ function PublicHome() {
     <>
       <HeroSection />
       <VehicleSlider />
-      <Footer />
     </>
   )
 }
