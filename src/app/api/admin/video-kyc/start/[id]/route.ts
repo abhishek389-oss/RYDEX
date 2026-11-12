@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import User from "@/models/user.model";
+import axios from "axios";
 import { NextResponse, NextRequest } from "next/server";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -30,6 +31,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         partner.videoKycStatus = "in_progress"
         partner.partnerOnBoardingSteps = 4
         await partner.save()
+
+        try {
+            const socketServerUrl = process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || "http://localhost:8000"
+            await axios.post(`${socketServerUrl}/emit`, {
+                userId: partner._id.toString(),
+                event: "partner_status_update",
+                data: {
+                    partnerStatus: partner.partnerStatus,
+                    videoKycStatus: "in_progress",
+                    videoKycRoomId: roomId,
+                    partnerOnBoardingSteps: 4
+                }
+            })
+        } catch (socketError) {
+            console.error("Socket emit failed in video-kyc start:", socketError)
+        }
 
         return NextResponse.json(
             { roomId },

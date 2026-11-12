@@ -3,7 +3,7 @@ import AnimatedCard from '@/components/AnimatedCard';
 import { Iuser } from '@/models/user.model';
 import { VehicleType } from '@/models/vehicle.model';
 import axios from 'axios';
-import { ArrowLeft, CheckCircle, CircleDashed, Clock, ImageIcon, IndianRupee, ShieldCheck, Truck, XCircle } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle, CircleDashed, Clock, ImageIcon, IndianRupee, ShieldCheck, Truck, XCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useParams, useRouter } from 'next/navigation'
 import React, { Suspense, useEffect, useState } from 'react'
@@ -36,6 +36,9 @@ function VehicleReviewContent() {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
+        setShowApprove(false)
+        setShowReject(false)
+        setRejectionReason("")
         if (!id) return
         const load = async () => {
             try {
@@ -204,6 +207,18 @@ function VehicleReviewContent() {
                                     <p className='text-[11px] text-gray-500'>Verify pricing and vehicle image carefully before approving.</p>
                                 </div>
                             </div>
+
+                            {data?.rejectionReason && (
+                                <div className='bg-red-50 border border-red-200 rounded-xl p-3 space-y-1'>
+                                    <div className='flex items-center gap-1.5 text-red-700 font-semibold text-xs'>
+                                        <AlertCircle size={14} />
+                                        Last Rejection Reason
+                                    </div>
+                                    <p className='text-xs text-red-600 leading-relaxed'>
+                                        {data.rejectionReason}
+                                    </p>
+                                </div>
+                            )}
 
                             <div className='flex flex-col sm:flex-row gap-2.5 pt-1'>
                                 <button

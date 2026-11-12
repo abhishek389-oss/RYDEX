@@ -6,7 +6,7 @@ import { IPartnerDocs } from '@/models/partnerDocs.model'
 import { Iuser } from '@/models/user.model'
 import { IVehicle } from '@/models/vehicle.model'
 import axios from 'axios'
-import { ArrowLeft, Car, CheckCircle, CircleDashed, Clock, FileText, Hash, Landmark, ShieldCheck, Tag, User, XCircle } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Car, CheckCircle, CircleDashed, Clock, FileText, Hash, Landmark, ShieldCheck, Tag, User, XCircle } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useParams, useRouter } from 'next/navigation'
 import React, { Suspense, useEffect, useState } from 'react'
@@ -44,6 +44,9 @@ const PartnerReviewContent = () => {
   }
 
   useEffect(() => {
+    setShowApprove(false)
+    setShowReject(false)
+    setRejectionReason("")
     if (id && id !== "[id]") {
       handleGetPartner()
     }
@@ -87,7 +90,6 @@ const PartnerReviewContent = () => {
 
   return (
     <div className='min-h-screen bg-linear-to-br from-gray-100 to-gray-200'>
-      {/* Sticky Header */}
       <div className='sticky top-0 z-40 backdrop-blur-xl bg-white/80 border-b border-gray-200'>
         <div className='max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4'>
           <div className='flex items-center gap-3 min-w-0'>
@@ -127,13 +129,10 @@ const PartnerReviewContent = () => {
         </div>
       </div>
 
-      {/* Main Grid Content */}
       <main className='max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-7 grid lg:grid-cols-3 gap-5 lg:gap-6'>
         
-        {/* Left Column (Vehicle & Documents) */}
         <div className='lg:col-span-2 space-y-5'>
           
-          {/* Vehicle Card */}
           <AnimatedCard title="Vehicle Information" icon={<Car size={16} />}>
             <div className='grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1'>
               <div className='bg-gray-50/80 border border-gray-200/70 rounded-xl p-3 flex flex-col justify-between'>
@@ -159,7 +158,6 @@ const PartnerReviewContent = () => {
             </div>
           </AnimatedCard>
 
-          {/* Documents Card */}
           <AnimatedCard title="Uploaded Documents" icon={<FileText size={16} />}>
             <div className='grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1'>
               <DocPriview label={"Aadhaar Card"} url={partnerDocs?.aadharUrl} />
@@ -169,10 +167,8 @@ const PartnerReviewContent = () => {
           </AnimatedCard>
         </div>
 
-        {/* Right Column (Bank Details & Action Bar) */}
         <div className='space-y-5'>
           
-          {/* Bank Details Card */}
           <AnimatedCard title="Bank Account Details" icon={<Landmark size={16} />}>
             <div className='divide-y divide-gray-100 text-xs sm:text-sm pt-1'>
               <div className='py-2.5 flex justify-between items-center'>
@@ -207,7 +203,6 @@ const PartnerReviewContent = () => {
             </div>
           </AnimatedCard>
 
-          {/* Admin Action Card */}
           {data?.partnerStatus === "pending" && (
             <motion.div
               initial={{ opacity: 0, y: 15 }}
@@ -223,6 +218,18 @@ const PartnerReviewContent = () => {
                   <p className='text-[11px] text-gray-500'>Verify documents carefully before approving.</p>
                 </div>
               </div>
+
+              {data?.rejectionReason && (
+                <div className='bg-red-50 border border-red-200 rounded-xl p-3 space-y-1'>
+                  <div className='flex items-center gap-1.5 text-red-700 font-semibold text-xs'>
+                    <AlertCircle size={14} />
+                    Last Rejection Reason
+                  </div>
+                  <p className='text-xs text-red-600 leading-relaxed'>
+                    {data.rejectionReason}
+                  </p>
+                </div>
+              )}
 
               <div className='flex flex-col gap-2.5 pt-1'>
                 <button
@@ -243,7 +250,6 @@ const PartnerReviewContent = () => {
 
         </div>
 
-        {/* Approve Modal */}
         <AnimatePresence>
           {showApprove && (
             <motion.div
@@ -284,7 +290,6 @@ const PartnerReviewContent = () => {
           )}
         </AnimatePresence>
 
-        {/* Reject Modal */}
         <AnimatePresence>
           {showReject && (
             <motion.div

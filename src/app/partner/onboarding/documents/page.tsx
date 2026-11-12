@@ -1,5 +1,7 @@
 "use client"
 import Nav from "@/components/Nav"
+import { useAppDispatch, useAppSelector } from "@/redux/hooks"
+import { setUser } from "@/redux/userSlice"
 import axios from "axios"
 import { ArrowLeft, CircleDashed, FileCheck, UploadCloud } from "lucide-react"
 import { motion } from "motion/react"
@@ -13,6 +15,8 @@ function page() {
     const [error, setError] = useState("");
 
     const router = useRouter()
+    const dispatch = useAppDispatch()
+    const { userData } = useAppSelector((state) => state.user)
     const [docs, setDocs] = useState<Record<docsType, File | null>>({
         aadhar: null,
         license: null,
@@ -44,9 +48,20 @@ function page() {
             formData.append("rc", docs.rc)
 
             const { data } = await axios.post("/api/partner/onboarding/documents", formData)
+            if (userData && data?.user) {
+                dispatch(setUser({
+                    ...userData,
+                    partnerOnBoardingSteps: data.user.partnerOnBoardingSteps,
+                    partnerStatus: data.user.partnerStatus || userData.partnerStatus
+                }))
+            }
             console.log(data)
             setLoading(false)
-            router.push("/")
+            if ((userData?.partnerOnBoardingSteps ?? 0) >= 3) {
+                router.push("/")
+            } else {
+                router.push("/")
+            }
         } catch (error: any) {
             console.log(error)
             setError(error?.response?.data?.message ?? "Something went wrong")

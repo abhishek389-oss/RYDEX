@@ -1,4 +1,6 @@
 "use client"
+import { useAppDispatch, useAppSelector } from "@/redux/hooks"
+import { setUser } from "@/redux/userSlice"
 import axios from "axios"
 import { ArrowLeft, BadgeCheck, CheckCircle, CircleDashed, CreditCard, Landmark, Phone } from "lucide-react"
 import { motion } from "motion/react"
@@ -9,6 +11,8 @@ const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/
 
 function page() {
     const router = useRouter()
+    const dispatch = useAppDispatch()
+    const { userData } = useAppSelector((state) => state.user)
     const [accountHolder, setAccountHolder] = useState("");
     const [accountNumber, setAccountNumber] = useState("");
     const [ifsc, setIfsc] = useState("");
@@ -37,6 +41,13 @@ function page() {
                 upi,
                 mobileNumber
             })
+            if (userData && data?.user) {
+                dispatch(setUser({
+                    ...userData,
+                    partnerOnBoardingSteps: data.user.partnerOnBoardingSteps,
+                    partnerStatus: data.user.partnerStatus || userData.partnerStatus
+                }))
+            }
             console.log(data)
             setLoading(false)
             router.push("/")

@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import User from "@/models/user.model";
 import Vehicle from "@/models/vehicle.model";
+import axios from "axios";
 import { NextResponse, NextRequest } from "next/server";
 
 export async function GET(
@@ -33,7 +34,6 @@ export async function GET(
         vehicle.rejectionReason = undefined
         await vehicle.save()
 
-
         const partner = await User.findById(vehicle.owner)
         if (!partner) {
             return NextResponse.json(
@@ -42,10 +42,25 @@ export async function GET(
             );
         }
 
-
         partner.partnerOnBoardingSteps = 7
         await partner.save()
-        
+
+        try {
+            const socketServerUrl = process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || "http://localhost:8000"
+            await axios.post(`${socketServerUrl}/emit`, {
+                userId: partner._id.toString(),
+                event: "partner_status_update",
+                data: {
+                    partnerStatus: partner.partnerStatus,
+                    partnerOnBoardingSteps: 7,
+                    vehicleStatus: "approved",
+                    vehicleRejectionReason: undefined
+                }
+            })
+        } catch (socketError) {
+            console.error("Socket emit failed in vehicle approve:", socketError)
+        }
+
         return NextResponse.json(
             vehicle,
             { status: 200 }

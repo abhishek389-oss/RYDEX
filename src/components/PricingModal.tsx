@@ -1,5 +1,7 @@
 "use client"
 import { IVehicle } from '@/models/vehicle.model'
+import { useAppDispatch, useAppSelector } from '@/redux/hooks'
+import { setUser } from '@/redux/userSlice'
 import axios from 'axios'
 import { ImagePlus, IndianRupee, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -9,12 +11,15 @@ import React, { useEffect, useState } from 'react'
 type PropsType = {
     open: boolean,
     onClose: () => void,
-    data: IVehicle | null
+    data: IVehicle | null,
+    onSuccess?: (vehicle: any) => void
 }
 
-function PricingModal({ open, onClose, data }: PropsType) {
+function PricingModal({ open, onClose, data, onSuccess }: PropsType) {
 
     const router = useRouter()
+    const dispatch = useAppDispatch()
+    const { userData } = useAppSelector((state) => state.user)
 
     const [image, setImage] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
@@ -34,7 +39,6 @@ function PricingModal({ open, onClose, data }: PropsType) {
         }
     }, [data])
 
-    // Validations: Image + तीनों Fields अनिवार्य
     const hasImage = Boolean(image || preview)
     const isBaseFareValid = baseFare.trim() !== "" && !isNaN(Number(baseFare)) && Number(baseFare) >= 0
     const isPricePerKMValid = pricePerKM.trim() !== "" && !isNaN(Number(pricePerKM)) && Number(pricePerKM) > 0
@@ -55,8 +59,18 @@ function PricingModal({ open, onClose, data }: PropsType) {
                 formData.append("image", image)
             }
 
-            const { data } = await axios.post("/api/partner/onboarding/pricing", formData)
-            console.log(data)
+            const res = await axios.post("/api/partner/onboarding/pricing", formData)
+            if (res.data?.user) {
+                dispatch(setUser(res.data.user))
+            } else if (userData) {
+                dispatch(setUser({
+                    ...userData,
+                    partnerOnBoardingSteps: 6
+                }))
+            }
+            if (onSuccess && res.data?.vehicle) {
+                onSuccess(res.data.vehicle)
+            }
             setLoading(false)
             onClose()
         } catch (error: any) {
@@ -137,7 +151,6 @@ function PricingModal({ open, onClose, data }: PropsType) {
                                 </label>
                             </div>
 
-                            {/* Base Fare */}
                             <div>
                                 <p className='text-xs font-semibold text-gray-700 mb-1'>Base Fare</p>
                                 <div className='flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 bg-white focus-within:border-black focus-within:ring-1 focus-within:ring-black transition shadow-2xs'>
@@ -153,7 +166,6 @@ function PricingModal({ open, onClose, data }: PropsType) {
                                 </div>
                             </div>
 
-                            {/* Price Per KM */}
                             <div>
                                 <p className='text-xs font-semibold text-gray-700 mb-1'>Price per KM</p>
                                 <div className='flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 bg-white focus-within:border-black focus-within:ring-1 focus-within:ring-black transition shadow-2xs'>
@@ -169,7 +181,6 @@ function PricingModal({ open, onClose, data }: PropsType) {
                                 </div>
                             </div>
 
-                            {/* Waiting Charge */}
                             <div>
                                 <p className='text-xs font-semibold text-gray-700 mb-1'>Waiting Charge</p>
                                 <div className='flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 bg-white focus-within:border-black focus-within:ring-1 focus-within:ring-black transition shadow-2xs'>

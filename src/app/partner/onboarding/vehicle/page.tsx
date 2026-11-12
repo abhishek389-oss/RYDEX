@@ -1,5 +1,7 @@
 "use client"
 import Nav from "@/components/Nav"
+import { useAppDispatch, useAppSelector } from "@/redux/hooks"
+import { setUser } from "@/redux/userSlice"
 import axios from "axios"
 import { ArrowLeft, Bike, Car, CircleDashed, Package, Truck } from "lucide-react"
 import { motion } from "motion/react"
@@ -16,6 +18,8 @@ const VEHICLES = [
 
 function page() {
   const router = useRouter()
+  const dispatch = useAppDispatch()
+  const { userData } = useAppSelector((state) => state.user)
   const [vehicleType, setVehicleType] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [vehicleModel, setVehicleModel] = useState("");
@@ -31,9 +35,20 @@ function page() {
         number: vehicleNumber,
         vehicleModel
       })
+      if (userData && data?.user) {
+        dispatch(setUser({
+          ...userData,
+          partnerOnBoardingSteps: data.user.partnerOnBoardingSteps,
+          partnerStatus: data.user.partnerStatus || userData.partnerStatus
+        }))
+      }
       console.log(data)
       setLoading(false)
-      router.push("/")
+      if ((userData?.partnerOnBoardingSteps ?? 0) >= 3) {
+        router.push("/")
+      } else {
+        router.push("/")
+      }
     } catch (error: any) {
       setError(error?.response?.data?.message ?? "something went wrong")
       console.log(error)
@@ -59,7 +74,7 @@ function page() {
 
   return (
     <div className='min-h-screen bg-gray-50 flex flex-col items-center justify-start px-4 pt-24 pb-12'>
-      <Nav/>
+      <Nav />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -160,9 +175,7 @@ function page() {
         <motion.button
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => {handleVehicle(),
-          router.push("/partner/onboarding/documents")
-          }}
+          onClick={handleVehicle}
           disabled={loading}
           className="mt-6 w-full h-11 rounded-xl bg-black text-white text-xs sm:text-sm font-semibold flex
         items-center justify-center gap-2 disabled:opacity-40 transition cursor-pointer"

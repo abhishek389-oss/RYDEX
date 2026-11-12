@@ -3,6 +3,8 @@ import uploadOnCloudinary from "@/lib/cloudinary";
 import connectDB from "@/lib/db";
 import PartnerDocs from "@/models/partnerDocs.model";
 import User from "@/models/user.model";
+import Vehicle from "@/models/vehicle.model";
+import axios from "axios";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -24,8 +26,6 @@ export async function POST(req: NextRequest) {
                 }
             )
         }
-
-
 
         const formData = await req.formData();
         const aadhar = formData.get("aadhar") as Blob | null
@@ -67,16 +67,37 @@ export async function POST(req: NextRequest) {
             { upsert: true, returnDocument: "after" }
         );
 
-        if (user.partnerOnBoardingSteps < 2) {
-            user.partnerOnBoardingSteps = 2;
-        }else{
+        const currentStep = user.partnerOnBoardingSteps || 0;
+        if (currentStep >= 3) {
             user.partnerOnBoardingSteps = 3;
-
+            user.partnerStatus = "pending";
+        } else {
+            user.partnerOnBoardingSteps = Math.max(currentStep, 2);
+            user.partnerStatus = "pending";
         }
-        user.partnerStatus = "pending"
         await user.save();
 
-        return NextResponse.json(partnerDocs, { status: 201 });
+        if (user.partnerOnBoardingSteps >= 3 && user.partnerStatus === "pending") {
+            try {
+                const vehicle = await Vehicle.findOne({ owner: user._id }).select("type");
+                const socketServerUrl = process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || "http://localhost:8000";
+
+                await axios.post(`${socketServerUrl}/emit`, {
+                    userId: "admin",
+                    event: "new_partner_review",
+                    data: {
+                        _id: user._id,
+                        name: user.name,
+                        email: user.email,
+                        vehicleType: vehicle?.type || ""
+                    }
+                });
+            } catch (socketError) {
+                console.error("Socket emit failed in documents route:", socketError);
+            }
+        }
+
+        return NextResponse.json({ partnerDocs, user }, { status: 201 });
 
     } catch (error) {
         return NextResponse.json(
@@ -85,5 +106,3 @@ export async function POST(req: NextRequest) {
         );
     }
 }
-
-

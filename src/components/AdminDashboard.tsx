@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import ContentList from './ContentList'
 import { signOut } from 'next-auth/react'
 import AdminEarning from './AdminEarning'
+import { getSocket } from '@/lib/socket'
 
 type Stats = {
   totalApprovedPartners: number
@@ -50,6 +51,42 @@ function AdminDashboard() {
   useEffect(() => {
     handleGetData()
     handleGetPendingKYC()
+  }, [])
+
+  useEffect(() => {
+    const socket = getSocket()
+
+    const joinAdminRoom = () => {
+      socket.emit("join_admin")
+    }
+
+    if (socket.connected) {
+      joinAdminRoom()
+    }
+    socket.on("connect", joinAdminRoom)
+
+    const handleNewPartnerReview = (newPartner: any) => {
+      setPartnerReviews((prev: any[] = []) => {
+        const exists = prev.some((p) => String(p._id) === String(newPartner._id))
+        if (exists) return prev
+        return [newPartner, ...prev]
+      })
+      handleGetData()
+    }
+
+    const handleAdminRefresh = () => {
+      handleGetData()
+      handleGetPendingKYC()
+    }
+
+    socket.on("new_partner_review", handleNewPartnerReview)
+    socket.on("admin_dashboard_refresh", handleAdminRefresh)
+
+    return () => {
+      socket.off("connect", joinAdminRoom)
+      socket.off("new_partner_review", handleNewPartnerReview)
+      socket.off("admin_dashboard_refresh", handleAdminRefresh)
+    }
   }, [])
 
   return (
@@ -125,9 +162,9 @@ function AdminDashboard() {
             transition={{ duration: 0.18, ease: "easeOut" }}
             className='space-y-2.5'
           >
-            {activeTab == "partner" && <ContentList data={partnerReviews ?? []} type={"partner"} />}
-            {activeTab == "kyc" && <ContentList data={pendingKyc ?? []} type={"kyc"} />}
-            {activeTab == "vehicle" && <ContentList data={vehicleReviews ?? []} type={"vehicle"} />}
+            {activeTab == "partner" && <ContentList data={partnerReviews ?? []} type={"partner"} onRefresh={handleGetData} />}
+            {activeTab == "kyc" && <ContentList data={pendingKyc ?? []} type={"kyc"} onRefresh={handleGetPendingKYC} />}
+            {activeTab == "vehicle" && <ContentList data={vehicleReviews ?? []} type={"vehicle"} onRefresh={handleGetData} />}
           </motion.div>
         </AnimatePresence>
 

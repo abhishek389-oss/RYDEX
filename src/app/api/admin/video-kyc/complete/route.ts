@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import User from "@/models/user.model";
+import axios from "axios";
 import { NextResponse, NextRequest } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -59,9 +60,24 @@ export async function POST(req: NextRequest) {
         }
         await partner.save()
 
+        try {
+            const socketServerUrl = process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || "http://localhost:8000"
+            await axios.post(`${socketServerUrl}/emit`, {
+                userId: partner._id.toString(),
+                event: "partner_status_update",
+                data: {
+                    partnerStatus: partner.partnerStatus,
+                    videoKycStatus: partner.videoKycStatus,
+                    videoKycRejectionReason: partner.videoKycRejectionReason,
+                    partnerOnBoardingSteps: partner.partnerOnBoardingSteps
+                }
+            })
+        } catch (socketError) {
+            console.error("Socket emit failed in video-kyc complete:", socketError)
+        }
 
         return NextResponse.json(
-            { status:partner.videoKycStatus},
+            { status: partner.videoKycStatus },
             { status: 201 }
         );
     } catch (error) {

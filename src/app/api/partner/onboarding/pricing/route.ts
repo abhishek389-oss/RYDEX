@@ -3,6 +3,7 @@ import uploadOnCloudinary from "@/lib/cloudinary";
 import connectDB from "@/lib/db";
 import User from "@/models/user.model";
 import Vehicle from "@/models/vehicle.model";
+import axios from "axios";
 import { NextResponse, NextRequest } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -63,21 +64,37 @@ export async function POST(req: NextRequest) {
             updated = true
         }
 
-        if (updated===false) {
-          return NextResponse.json(
-            { message: "Nothing to update" },
-            { status: 400 }
-          );
+        if (updated === false) {
+            return NextResponse.json(
+                { message: "Nothing to update" },
+                { status: 400 }
+            );
         }
 
-        vehicle.status="pending"
-        vehicle.rejectionReason=undefined
+        vehicle.status = "pending"
         await vehicle.save()
-        partner.partnerOnBoardingSteps=6
+
+        const currentStep = partner.partnerOnBoardingSteps || 0;
+        if (currentStep >= 7) {
+            partner.partnerOnBoardingSteps = 6;
+        } else {
+            partner.partnerOnBoardingSteps = Math.max(currentStep, 6);
+        }
         await partner.save()
 
+        try {
+            const socketServerUrl = process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || "http://localhost:8000"
+            await axios.post(`${socketServerUrl}/emit`, {
+                userId: "admin",
+                event: "admin_dashboard_refresh",
+                data: { type: "vehicle", vehicleId: vehicle._id }
+            })
+        } catch (socketError) {
+            console.error("Socket emit failed in pricing route:", socketError)
+        }
+
         return NextResponse.json(
-            { message: "Pricing Submitted" },
+            { message: "Pricing Submitted", user: partner, vehicle },
             { status: 201 }
         );
     } catch (error) {
@@ -88,12 +105,9 @@ export async function POST(req: NextRequest) {
     }
 }
 
-
-
 export async function GET(req: NextRequest) {
     try {
-        
- await connectDB()
+        await connectDB()
         const session = await auth()
         if (!session || !session.user || !session.user?.email) {
             return NextResponse.json({
@@ -119,7 +133,6 @@ export async function GET(req: NextRequest) {
                 { status: 400 }
             );
         }
-
 
         return NextResponse.json(
             { vehicle },

@@ -6,7 +6,7 @@ import { motion } from "motion/react"
 import { useRouter } from "next/navigation"
 
 
-function ContentList({ data, type }: any) {
+function ContentList({ data, type, onRefresh }: any) {
 
     const router = useRouter()
 
@@ -14,7 +14,9 @@ function ContentList({ data, type }: any) {
     const handleStartVideoKyc = async (id: any) => {
         try {
             const result = await axios.get(`/api/admin/video-kyc/start/${id}`)
-            window.location.reload()
+            if (onRefresh) {
+                onRefresh()
+            }
         } catch (error) {
             console.log(error)
         }

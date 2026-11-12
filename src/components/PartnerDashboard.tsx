@@ -1,5 +1,5 @@
 "use client"
-import { useAppSelector } from '@/redux/hooks'
+import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import React, { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { ArrowRight, Check, Clock, Lock, Video } from 'lucide-react'
@@ -11,6 +11,9 @@ import axios from 'axios'
 import PricingModal from './PricingModal'
 import { IVehicle } from '@/models/vehicle.model'
 import PartnerEarning from './PartnerEarning'
+import { getSocket } from '@/lib/socket'
+import { setUser } from '@/redux/userSlice'
+
 
 type Step = {
     id: number,
@@ -34,6 +37,7 @@ const TOTAL_STEPS = STEPS.length
 function PartnerDashboard() {
     const router = useRouter()
     const { userData } = useAppSelector((state) => state.user)
+    const dispatch = useAppDispatch()
     const [activeStep, setActiveStep] = useState(0)
     const [requestLoading, setRequestLoading] = useState(false)
     const [showPricing, setShowPricing] = useState(false);
@@ -54,6 +58,62 @@ function PartnerDashboard() {
             console.log(error)
         }
     }
+
+    useEffect(() => {
+        if (!userData?._id) {
+            return
+        }
+
+        const socket = getSocket()
+
+        const registerIdentity = () => {
+            socket.emit("identity", userData._id)
+        }
+
+        if (socket.connected) {
+            registerIdentity()
+        }
+        socket.on("connect", registerIdentity)
+
+        const handleStatusUpdate = (data: any) => {
+            dispatch(setUser({
+                ...userData,
+                partnerStatus: data.partnerStatus ?? userData.partnerStatus,
+                rejectionReason: data.rejectionReason ?? "",
+                videoKycStatus: data.videoKycStatus ?? userData.videoKycStatus,
+                videoKycRoomId: data.videoKycRoomId ?? userData.videoKycRoomId,
+                videoKycRejectionReason: data.videoKycRejectionReason ?? "",
+                partnerOnBoardingSteps: data.partnerOnBoardingSteps ?? userData.partnerOnBoardingSteps
+            }))
+
+            if (data.vehicleStatus) {
+                setVehicleData((prev: any) => {
+                    if (!prev) return prev
+                    if (prev.vehicle) {
+                        return {
+                            ...prev,
+                            vehicle: {
+                                ...prev.vehicle,
+                                status: data.vehicleStatus,
+                                rejectionReason: data.vehicleRejectionReason ?? ""
+                            }
+                        }
+                    }
+                    return {
+                        ...prev,
+                        status: data.vehicleStatus,
+                        rejectionReason: data.vehicleRejectionReason ?? ""
+                    }
+                })
+            }
+        }
+
+        socket.on("partner_status_update", handleStatusUpdate)
+        return () => {
+            socket.off("connect", registerIdentity)
+            socket.off("partner_status_update", handleStatusUpdate)
+        }
+    }, [userData?._id, userData])
 
     useEffect(() => {
         handleGetPricing()
@@ -143,7 +203,7 @@ function PartnerDashboard() {
                     activeStep == 4 && userData?.partnerStatus === "rejected" && (
                         <RejectionCard
                             title="Partner Rejected"
-                            reason={userData.rejectionReason}
+                            reason={userData.rejectionReason || ""}
                             actionLabel={`Review and Update`}
                             onAction={() => router.push("/partner/onboarding/vehicle")}
                         />
@@ -170,12 +230,18 @@ function PartnerDashboard() {
                         ) : userData?.videoKycStatus === "rejected" ? (
                             <RejectionCard
                                 title="Video kyc rejected"
-                                reason={userData?.videoKycRejectionReason}
+                                reason={userData?.videoKycRejectionReason || ""}
                                 actionLabel={requestLoading ? "Requesting..." : "Request Again"}
                                 onAction={async () => {
                                     try {
                                         setRequestLoading(true)
                                         await axios.get("/api/partner/video-kyc/request")
+                                        dispatch(setUser({
+                                            ...userData,
+                                            videoKycStatus: "pending",
+                                            videoKycRejectionReason: "",
+                                            videoKycRoomId: ""
+                                        }))
                                     } catch (error) {
                                         console.log(error)
                                     } finally {
@@ -206,24 +272,36 @@ function PartnerDashboard() {
                     )
                 }
 
+                {activeStep == 6 && (
+                    <ActionCard
+                        icon={<Check size={16} />}
+                        title="Video KYC Approved — Enter Pricing"
+                        button={
+                            <span className="flex items-center gap-1.5">
+                                Enter Pricing <ArrowRight size={14} />
+                            </span>
+                        }
+                        onclick={() => setShowPricing(true)}
+                    />
+                )}
+
                 {activeStep == 7 && ((vehicleData as any)?.vehicle?.status === "pending" || vehicleData?.status == "pending") && (
                     <StatusCard
                         icon={<Clock size={16} />}
                         title="Pricing Under Review"
                         desc="Admin is reviewing your pricing."
                     />
-
                 )}
 
-                {activeStep == 7 && ((vehicleData as any)?.vehicle?.status === "rejected" || vehicleData?.status == "pending") && (
+                {activeStep == 7 && ((vehicleData as any)?.vehicle?.status === "rejected" || vehicleData?.status == "rejected") && (
                     <RejectionCard
                         title="Pricing Rejected"
-                        reason={(vehicleData as any)?.vehicle?.rejectionReason}
+                        reason={(vehicleData as any)?.vehicle?.rejectionReason || vehicleData?.rejectionReason || ""}
                         actionLabel="Edit & Resubmit"
                         onAction={() => setShowPricing(true)}
                     />
-
                 )}
+
                 {activeStep == 8 && ((vehicleData as any)?.vehicle?.status === "approved" || vehicleData?.status === "approved") && (
                     <motion.div
                         initial={{ opacity: 0, y: 15 }}
@@ -255,6 +333,7 @@ function PartnerDashboard() {
                 open={showPricing}
                 onClose={() => setShowPricing(false)}
                 data={vehicleData}
+                onSuccess={(updatedVehicle) => setVehicleData({ vehicle: updatedVehicle } as any)}
             />
 
         </div>

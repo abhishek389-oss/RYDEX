@@ -8,8 +8,7 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-
-  const session = await auth()
+        const session = await auth()
         if (!session?.user || !session?.user?.email || session?.user?.role !== "admin") {
             return NextResponse.json(
                 { message: "Unauthorized" },
@@ -21,12 +20,12 @@ export async function GET(
         const vehicleId = (await params).id
 
         const vehicle = await Vehicle.findById(vehicleId).populate("owner")
-      if (!vehicle) {
-        return NextResponse.json(
-          { message: "Vehicle not found" },
-          { status: 400 }
-        );
-      }
+        if (!vehicle) {
+            return NextResponse.json(
+                { message: "Vehicle not found" },
+                { status: 400 }
+            );
+        }
 
         return NextResponse.json(
             vehicle,

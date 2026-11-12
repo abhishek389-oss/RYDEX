@@ -23,6 +23,7 @@ function Nav() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [pendingCount, setPendingCount] = useState<number>(0)
+  const [toggleLoading, setToggleLoading] = useState(false)
 
   const fetchPendingCount = async () => {
     try {
@@ -70,6 +71,27 @@ function Nav() {
     setMenuOpen(false)
   }
 
+  const handleRoleToggle = async () => {
+    if (!userData || toggleLoading) return
+
+    try {
+      setToggleLoading(true)
+      const { data } = await axios.post("/api/user/toggle-role")
+
+      if (data?.success && data?.role) {
+        // Redux अपडेट करें ताकि टॉगल बटन तुरंत स्लाइड हो जाए
+        dispatch(setUser({ ...userData, role: data.role }))
+
+        // अगर पार्टनर बना है तो होम या पार्टनर डैशबोर्ड, अगर यूजर बना है तो होम
+        router.refresh()
+      }
+    } catch (error) {
+      console.error("Role toggle failed:", error)
+    } finally {
+      setToggleLoading(false)
+    }
+  }
+
   const hideNavbar =
     pathName?.startsWith('/user/ride/') ||
     pathName === '/partner/active-ride'
@@ -82,7 +104,7 @@ function Nav() {
     <>
       <div className="hidden">
         <AuthModel>
-          <span id="hidden-auth-trigger"  aria-hidden="true" />
+          <span id="hidden-auth-trigger" aria-hidden="true" />
         </AuthModel>
       </div>
 
@@ -210,18 +232,23 @@ function Nav() {
                         </div>
 
                         <div className='p-1.5 space-y-0.5'>
-                          {userData.role !== "partner" && (
-                            <button
-                              onClick={() => {
-                                setProfileOpen(false)
-                                router.push("/partner/onboarding/vehicle")
-                              }}
-                              className='w-full text-left px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-xl transition flex items-center gap-2.5 cursor-pointer'
-                            >
+                          {/* Role Switcher Toggle */}
+                          <div
+                            onClick={handleRoleToggle}
+                            className='w-full text-left px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-xl transition flex items-center justify-between cursor-pointer'
+                          >
+                            <div className='flex items-center gap-2.5'>
                               <UserPlus size={15} className='text-gray-500' />
-                              <span>Become a Partner</span>
-                            </button>
-                          )}
+                              <span>{userData.role === "partner" ? "Switch to User" : "Become a Partner"}</span>
+                            </div>
+                            <div className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors duration-300 ${userData.role === "partner" ? "bg-black justify-end" : "bg-gray-300 justify-start"}`}>
+                              <motion.div
+                                layout
+                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                className='w-4 h-4 rounded-full bg-white shadow-md'
+                              />
+                            </div>
+                          </div>
 
                           <button
                             onClick={() => {
@@ -409,19 +436,22 @@ function Nav() {
               </div>
 
               <div className='mt-2 space-y-1'>
-                {userData.role !== "partner" && (
-                  <div
-                    onClick={() => {
-                      setProfileOpen(false)
-                      router.push("/partner/onboarding/vehicle")
-                    }}
-                    className='w-full flex items-center gap-2.5 px-2 py-2 text-xs hover:bg-gray-100 font-medium text-gray-800 active:bg-gray-100 rounded-xl cursor-pointer transition'
-                  >
+                <div
+                  onClick={handleRoleToggle}
+                  className='w-full flex items-center justify-between px-2 py-2 text-xs hover:bg-gray-100 font-medium text-gray-800 active:bg-gray-100 rounded-xl cursor-pointer transition'
+                >
+                  <div className='flex items-center gap-2.5'>
                     <UserPlus size={15} />
-                    <span>Become a Partner</span>
-                    <ChevronRight size={14} className='ml-auto text-gray-400' />
+                    <span>{userData.role === "partner" ? "Switch to User" : "Switch to Partner"}</span>
                   </div>
-                )}
+                  <div className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors duration-300 ${userData.role === "partner" ? "bg-black justify-end" : "bg-gray-300 justify-start"}`}>
+                    <motion.div
+                      layout
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      className='w-4 h-4 rounded-full bg-white shadow-md'
+                    />
+                  </div>
+                </div>
 
                 <button
                   className='w-full flex items-center gap-2.5 px-2 py-2 text-xs font-medium text-red-600 hover:bg-red-100 active:bg-red-50 rounded-xl cursor-pointer transition'

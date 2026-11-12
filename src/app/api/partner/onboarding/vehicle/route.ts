@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Vehicle from "@/models/vehicle.model";
 import User from "@/models/user.model";
+import axios from "axios";
 import { auth } from "@/auth";
 
 export async function GET() {
@@ -79,12 +80,37 @@ export async function POST(req: Request) {
       });
     }
 
-    user.role = "partner"
-    user.partnerOnBoardingSteps = 1;
+    user.role = "partner";
+    const currentStep = user.partnerOnBoardingSteps || 0;
+    if (currentStep >= 3) {
+      user.partnerOnBoardingSteps = 3;
+      user.partnerStatus = "pending";
+    } else {
+      user.partnerOnBoardingSteps = Math.max(currentStep, 1);
+    }
     await user.save();
 
+    if (user.partnerOnBoardingSteps >= 3 && user.partnerStatus === "pending") {
+      try {
+        const socketServerUrl = process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || "http://localhost:8000";
+
+        await axios.post(`${socketServerUrl}/emit`, {
+          userId: "admin",
+          event: "new_partner_review",
+          data: {
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            vehicleType: vehicle.type || ""
+          }
+        });
+      } catch (socketError) {
+        console.error("Socket emit failed in vehicle route:", socketError);
+      }
+    }
+
     return NextResponse.json(
-      { message: "Vehicle details saved successfully", vehicle },
+      { message: "Vehicle details saved successfully", vehicle, user },
       { status: 200 }
     );
   } catch (error) {
