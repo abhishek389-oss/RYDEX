@@ -1,4 +1,5 @@
 "use client"
+import Nav from "@/components/Nav"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import { setUser } from "@/redux/userSlice"
 import axios from "axios"
@@ -77,6 +78,7 @@ function page() {
 
     return (
         <div className="min-h-screen bg-gray-50/50 flex flex-col items-center justify-start px-4 pt-24 pb-12">
+            <Nav/>
             <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
