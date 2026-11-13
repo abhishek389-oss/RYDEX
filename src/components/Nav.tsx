@@ -8,7 +8,7 @@ import AuthModel from './AuthModel'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { setUser } from '@/redux/userSlice'
 import { signOut } from 'next-auth/react'
-import { ChevronRight, LogOut, Menu, UserPlus, X } from 'lucide-react'
+import { ChevronRight, Loader2, LogOut, Menu, UserPlus, X } from 'lucide-react'
 import axios from 'axios'
 import { getSocket } from '@/lib/socket'
 
@@ -79,10 +79,8 @@ function Nav() {
       const { data } = await axios.post("/api/user/toggle-role")
 
       if (data?.success && data?.role) {
-        // Redux अपडेट करें ताकि टॉगल बटन तुरंत स्लाइड हो जाए
         dispatch(setUser({ ...userData, role: data.role }))
-
-        // अगर पार्टनर बना है तो होम या पार्टनर डैशबोर्ड, अगर यूजर बना है तो होम
+        setProfileOpen(false)
         router.refresh()
       }
     } catch (error) {
@@ -102,6 +100,32 @@ function Nav() {
 
   return (
     <>
+      <AnimatePresence>
+        {toggleLoading && userData && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-100 bg-black/45 backdrop-blur-xs flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              className="bg-white text-black px-6 py-4 rounded-2xl shadow-2xl border border-gray-100 flex items-center gap-3"
+            >
+              <Loader2 size={20} className="animate-spin text-black shrink-0" />
+              <div>
+                <p className="text-sm font-bold text-gray-900">
+                  {userData.role === "partner" ? "Switching to User Mode..." : "Switching to Partner Mode..."}
+                </p>
+                <p className="text-[11px] text-gray-500">Please wait a moment</p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="hidden">
         <AuthModel>
           <span id="hidden-auth-trigger" aria-hidden="true" />
@@ -232,14 +256,23 @@ function Nav() {
                         </div>
 
                         <div className='p-1.5 space-y-0.5'>
-                          {/* Role Switcher Toggle */}
                           <div
                             onClick={handleRoleToggle}
-                            className='w-full text-left px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-xl transition flex items-center justify-between cursor-pointer'
+                            className={`w-full text-left px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-xl transition flex items-center justify-between ${toggleLoading ? "opacity-60 pointer-events-none" : "cursor-pointer"}`}
                           >
                             <div className='flex items-center gap-2.5'>
-                              <UserPlus size={15} className='text-gray-500' />
-                              <span>{userData.role === "partner" ? "Switch to User" : "Become a Partner"}</span>
+                              {toggleLoading ? (
+                                <Loader2 size={15} className='text-black animate-spin' />
+                              ) : (
+                                <UserPlus size={15} className='text-gray-500' />
+                              )}
+                              <span>
+                                {toggleLoading
+                                  ? "Switching..."
+                                  : userData.role === "partner"
+                                    ? "Switch to User"
+                                    : "Become a Partner"}
+                              </span>
                             </div>
                             <div className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors duration-300 ${userData.role === "partner" ? "bg-black justify-end" : "bg-gray-300 justify-start"}`}>
                               <motion.div
@@ -438,11 +471,21 @@ function Nav() {
               <div className='mt-2 space-y-1'>
                 <div
                   onClick={handleRoleToggle}
-                  className='w-full flex items-center justify-between px-2 py-2 text-xs hover:bg-gray-100 font-medium text-gray-800 active:bg-gray-100 rounded-xl cursor-pointer transition'
+                  className={`w-full flex items-center justify-between px-2 py-2 text-xs hover:bg-gray-100 font-medium text-gray-800 active:bg-gray-100 rounded-xl transition ${toggleLoading ? "opacity-60 pointer-events-none" : "cursor-pointer"}`}
                 >
                   <div className='flex items-center gap-2.5'>
-                    <UserPlus size={15} />
-                    <span>{userData.role === "partner" ? "Switch to User" : "Switch to Partner"}</span>
+                    {toggleLoading ? (
+                      <Loader2 size={15} className='animate-spin' />
+                    ) : (
+                      <UserPlus size={15} />
+                    )}
+                    <span>
+                      {toggleLoading
+                        ? "Switching..."
+                        : userData.role === "partner"
+                          ? "Switch to User"
+                          : "Switch to Partner"}
+                    </span>
                   </div>
                   <div className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors duration-300 ${userData.role === "partner" ? "bg-black justify-end" : "bg-gray-300 justify-start"}`}>
                     <motion.div
