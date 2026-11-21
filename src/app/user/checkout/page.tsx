@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import axios from 'axios'
 import { getSocket } from '@/lib/socket'
+import { useAppSelector } from '@/redux/hooks'
 import Nav from '@/components/Nav'
 
 const VEHICLE_META: any = {
@@ -69,6 +70,7 @@ const loadRazorpayScript = () => {
 function CheckoutContent() {
   const router = useRouter()
   const params = useSearchParams()
+  const userData = useAppSelector((state) => state.user.userData)
 
   const [status, setStatus] = useState<CheckoutStatus>("idle");
   const [loading, setLoading] = useState(false);
@@ -120,22 +122,63 @@ function CheckoutContent() {
   useEffect(() => {
     const socket = getSocket();
 
-    socket.on("accept_booking", (data: any) => {
+    const registerUser = () => {
+      if (userData?._id) {
+        socket.emit("identity", userData._id);
+      }
+    };
+
+    registerUser();
+    socket.on("connect", registerUser);
+
+    const handleAccept = (data: any) => {
       if (data?.bookingId) {
         setBooking((prev: any) => ({ ...(prev || {}), _id: data.bookingId }));
       }
       setStatus("awaiting_payment");
-    });
+    };
 
-    socket.on("reject_booking", () => {
+    const handleReject = () => {
       setStatus("rejected");
-    });
+    };
+
+    socket.on("accept_booking", handleAccept);
+    socket.on("booking_accepted", handleAccept);
+    socket.on("reject_booking", handleReject);
+    socket.on("booking_rejected", handleReject);
 
     return () => {
-      socket.off("accept_booking");
-      socket.off("reject_booking");
+      socket.off("connect", registerUser);
+      socket.off("accept_booking", handleAccept);
+      socket.off("booking_accepted", handleAccept);
+      socket.off("reject_booking", handleReject);
+      socket.off("booking_rejected", handleReject);
     };
-  }, []);
+  }, [userData?._id]);
+
+  useEffect(() => {
+    if (status !== "requested" || !booking?._id) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const { data } = await axios.get(`/api/user/booking/${booking._id}`);
+        const latest = data?.booking || data;
+        if (!latest?.bookingStatus) return;
+
+        if (latest.bookingStatus === "rejected" || latest.bookingStatus === "cancelled" || latest.bookingStatus === "expired") {
+          setStatus("rejected");
+        } else if (latest.bookingStatus === "awaiting_payment" || latest.bookingStatus === "accepted") {
+          setStatus("awaiting_payment");
+        } else if (latest.bookingStatus === "confirmed") {
+          setStatus("confirmed");
+        }
+      } catch (err) {
+        console.log(err);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [status, booking?._id]);
 
   useEffect(() => {
     if (status !== "awaiting_payment") return;
@@ -248,7 +291,7 @@ function CheckoutContent() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-100 px-4 pt-24 pb-8 sm:pb-12">
+    <div className="min-h-dvh bg-zinc-100 px-4 sm:px-6 pt-24 pb-10 sm:pb-12">
       <Nav/>
       <div className="relative max-w-4xl mx-auto z-10">
         <motion.div
@@ -271,7 +314,7 @@ function CheckoutContent() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5 items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 items-stretch">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -279,7 +322,7 @@ function CheckoutContent() {
             className="bg-white rounded-2xl border border-zinc-200/90 overflow-hidden shadow-xs flex flex-col"
           >
             <div className="h-1 bg-zinc-900 w-full" />
-            <div className="p-4.5 sm:p-5 flex flex-col flex-1 justify-between gap-4">
+            <div className="p-4 sm:p-5 flex flex-col flex-1 justify-between gap-4">
               <div>
                 <div className="flex items-center justify-between mb-3.5">
                   <div>
@@ -360,7 +403,7 @@ function CheckoutContent() {
             className="bg-white rounded-2xl border border-zinc-200/90 overflow-hidden shadow-xs flex flex-col"
           >
             <div className="h-1 bg-zinc-900 w-full" />
-            <div className="p-4.5 sm:p-5 flex-1 flex flex-col justify-between">
+            <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
               <AnimatePresence mode="wait">
                 {(status === "idle" || status === "rejected") && (
                   <motion.div

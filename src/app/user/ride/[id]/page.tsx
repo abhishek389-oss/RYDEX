@@ -72,7 +72,6 @@ function RideTrackingContent() {
       const { data } = await axios.get(`/api/user/booking/${bookingId}`)
       const b = data?.booking || data
       if (b) {
-        // पेमेंट बाईपास प्रिवेंशन: अगर पेमेंट पेंडिंग है तो सीधे चेकआउट पर रीडायरेक्ट करें
         if (b.paymentStatus === "pending" || b.bookingStatus === "awaiting_payment") {
           router.push(`/user/checkout?pickup=${encodeURIComponent(b.pickUpAddress || "")}&drop=${encodeURIComponent(b.dropAddress || "")}&fare=${b.fare || 0}&vehicle=${b.vehicle?.type || "car"}`);
           return;
@@ -119,7 +118,13 @@ function RideTrackingContent() {
     if (!bookingId) return
 
     const socket = getSocket()
-    socket.emit("join_ride", bookingId)
+
+    const joinRideRoom = () => {
+      socket.emit("join_ride", bookingId)
+    }
+
+    joinRideRoom()
+    socket.on("connect", joinRideRoom)
 
     socket.on("driver_location_update", (data: any) => {
       if (data.latitude && data.longitude) {
@@ -142,6 +147,7 @@ function RideTrackingContent() {
     })
 
     return () => {
+      socket.off("connect", joinRideRoom)
       socket.off("driver_location_update")
       socket.off("ride_started")
       socket.off("ride_completed")
@@ -172,6 +178,7 @@ function RideTrackingContent() {
   }
 
   const rawEta = status === "confirmed" ? etaToPickup : etaToDrop
+  const rawDistance = status === "confirmed" ? distanceToPickup : distanceToDrop
   const isConfirmed = status === "confirmed"
   const isStarted = status === "started"
   const isCompleted = status === "completed"
@@ -192,7 +199,7 @@ function RideTrackingContent() {
 
   if (loading) {
     return (
-      <div className="h-screen w-full bg-zinc-950 flex flex-col items-center justify-center gap-2">
+      <div className="h-dvh w-full bg-zinc-950 flex flex-col items-center justify-center gap-2">
         <div className="w-7 h-7 rounded-full border-2 border-white/20 border-t-white animate-spin" />
         <p className="text-white/40 text-[11px] tracking-widest uppercase font-medium">
           Loading your ride...
@@ -203,7 +210,7 @@ function RideTrackingContent() {
 
   if (!booking && !showRatingModal) {
     return (
-      <div className="h-screen w-full bg-zinc-950 flex flex-col items-center justify-center gap-3">
+      <div className="h-dvh w-full bg-zinc-950 flex flex-col items-center justify-center gap-3">
         <CheckCircle2 size={36} className="text-emerald-500" />
         <h2 className="text-white text-base font-bold">Ride Not Found</h2>
         <button
@@ -216,7 +223,7 @@ function RideTrackingContent() {
     )
   }
 
-  const RideDetailsBody = () => (
+  const rideDetailsBody = (
     <div className="space-y-2.5">
       <div className="grid grid-cols-2 gap-2">
         <div className={`p-2.5 rounded-xl border flex flex-col justify-between ${isConfirmed ? "bg-emerald-50 border-emerald-200" : isCompleted ? "bg-zinc-50 border-zinc-100 opacity-60" : "bg-zinc-50 border-zinc-100 opacity-60"}`}>
@@ -294,35 +301,16 @@ function RideTrackingContent() {
               )}
 
               <button
-                onClick={() => setChatOpen(!chatOpen)}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
-                  chatOpen ? "bg-white text-zinc-950" : "bg-zinc-800 hover:bg-zinc-700 text-white"
-                }`}
+                type="button"
+                onClick={() => setChatOpen(true)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer bg-zinc-800 hover:bg-zinc-700 text-white"
               >
-                {chatOpen ? <X size={15} /> : <MessageSquare size={14} />}
+                <MessageSquare size={14} />
               </button>
             </div>
           )}
         </div>
       )}
-
-      <AnimatePresence>
-        {chatOpen && !isCompleted && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 340 }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.25 }}
-            className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm"
-          >
-            <RideChat
-              bookingId={bookingId}
-              currentRole="user"
-              otherName={booking?.driver?.name || "Driver"}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {booking?.vehicle && (
         <div className="bg-zinc-50 border border-zinc-100 rounded-xl p-2.5 flex items-center justify-between">
@@ -398,8 +386,8 @@ function RideTrackingContent() {
   )
 
   return (
-    <div className="h-screen w-full bg-zinc-100 flex flex-col lg:flex-row overflow-hidden relative">
-      <div className="relative flex-1 h-[60vh] lg:h-full w-full z-0">
+    <div className="h-dvh w-full bg-zinc-100 flex flex-col lg:flex-row overflow-hidden relative">
+      <div className="relative flex-1 min-h-0 w-full z-0">
         <LiveRideMap
           driverLocation={driverPosition}
           pickupLocation={pickupPosition}
@@ -448,30 +436,35 @@ function RideTrackingContent() {
         </motion.div>
       </div>
 
-      <div className="lg:hidden flex flex-col bg-white border-t border-zinc-200 rounded-t-2xl shadow-2xl z-20 transition-all duration-300">
-        <div 
+      <div className="lg:hidden shrink-0 flex flex-col bg-white border-t border-zinc-200 rounded-t-2xl shadow-2xl z-20">
+        <button
+          type="button"
           onClick={() => setMobileDrawerOpen(!mobileDrawerOpen)} 
-          className="w-full py-2 flex flex-col items-center justify-center cursor-pointer border-b border-zinc-100"
+          className="w-full py-2.5 flex flex-col items-center justify-center cursor-pointer border-b border-zinc-100 touch-manipulation"
         >
-          <div className="w-10 h-1 bg-zinc-300 rounded-full mb-1" />
+          <div className="w-10 h-1 bg-zinc-300 rounded-full mb-1.5" />
           <div className="flex items-center justify-between w-full px-4">
             <span className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
               <span>{getStatusHeading()}</span>
               {!isCompleted && (
                 routeCalculating ? (
                   <Loader2 size={12} className="animate-spin text-zinc-400" />
+                ) : rawEta > 0 || rawDistance > 0 ? (
+                  <span className="text-zinc-500 font-medium">
+                    ({Math.max(1, Math.round(rawEta))} min • {rawDistance.toFixed(1)} km)
+                  </span>
                 ) : (
-                  <span className="text-zinc-500 font-normal">({Math.round(rawEta || 5)} min)</span>
+                  <span className="text-zinc-400 font-normal">(Locating...)</span>
                 )
               )}
             </span>
-            <ChevronUp size={16} className={`text-zinc-500 transition-transform ${mobileDrawerOpen ? "rotate-180" : ""}`} />
+            <ChevronUp size={16} className={`text-zinc-500 transition-transform duration-200 ${mobileDrawerOpen ? "rotate-180" : ""}`} />
           </div>
-        </div>
+        </button>
 
         {mobileDrawerOpen && (
-          <div className="max-h-[38vh] overflow-y-auto p-3">
-            <RideDetailsBody />
+          <div className="max-h-[48dvh] overflow-y-auto overscroll-contain touch-pan-y p-3 pb-5">
+            {rideDetailsBody}
           </div>
         )}
       </div>
@@ -499,9 +492,13 @@ function RideTrackingContent() {
                 <Zap size={12} className="text-amber-400" />
                 {routeCalculating ? (
                   <Loader2 size={12} className="animate-spin text-white/60" />
-                ) : (
+                ) : rawEta > 0 || rawDistance > 0 ? (
                   <span className="text-white text-xs font-semibold">
-                    {Math.round(rawEta || 5)} min
+                    {Math.max(1, Math.round(rawEta))} min • {rawDistance.toFixed(1)} km
+                  </span>
+                ) : (
+                  <span className="text-white/70 text-xs font-medium">
+                    Locating...
                   </span>
                 )}
               </div>
@@ -515,9 +512,30 @@ function RideTrackingContent() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-3">
-          <RideDetailsBody />
+          {rideDetailsBody}
         </div>
       </div>
+
+      <AnimatePresence>
+        {chatOpen && !isCompleted && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[1000] p-4">
+            <motion.div
+              initial={{ scale: 0.94, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.94, opacity: 0, y: 12 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-md h-[72dvh] max-h-[540px] rounded-2xl overflow-hidden shadow-2xl border border-zinc-200 bg-white"
+            >
+              <RideChat
+                bookingId={bookingId}
+                currentRole="user"
+                otherName={booking?.driver?.name || "Driver"}
+                onClose={() => setChatOpen(false)}
+              />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showRatingModal && (
@@ -569,7 +587,7 @@ function RideTrackingContent() {
                 onChange={(e) => setFeedbackText(e.target.value)}
                 placeholder="Write your feedback for driver (optional)..."
                 rows={2}
-                className="w-full text-xs bg-zinc-50 border border-zinc-200 rounded-xl p-2.5 mb-4 outline-none focus:border-zinc-900 resize-none text-zinc-900"
+                className="w-full text-base sm:text-xs bg-zinc-50 border border-zinc-200 rounded-xl p-2.5 mb-4 outline-none focus:border-zinc-900 resize-none text-zinc-900"
               />
 
               <div className="flex gap-2">
@@ -604,7 +622,7 @@ export default function UserRideTrackingPage() {
   return (
     <Suspense
       fallback={
-        <div className="h-screen w-full bg-zinc-950 flex flex-col items-center justify-center gap-2">
+        <div className="h-dvh w-full bg-zinc-950 flex flex-col items-center justify-center gap-2">
           <div className="w-7 h-7 rounded-full border-2 border-white/20 border-t-white animate-spin" />
           <p className="text-white/40 text-[11px] tracking-widest uppercase font-medium">
             Loading...

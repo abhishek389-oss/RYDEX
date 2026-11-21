@@ -48,8 +48,9 @@ function VehicleCard({ vehicle, distance = 0, onBook }: Props) {
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4 }}
+      whileTap={{ y: -3, scale: 0.99 }}
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-      className="relative bg-white border border-zinc-200/90 rounded-2xl overflow-hidden flex flex-col group cursor-default shadow-xs hover:shadow-md transition-shadow"
+      className="relative bg-white border border-zinc-200/90 active:border-zinc-900 rounded-2xl overflow-hidden flex flex-col group cursor-default shadow-xs hover:shadow-md active:shadow-md transition-all touch-manipulation select-none"
     >
       <div className="relative h-40 bg-zinc-50 flex items-center justify-center overflow-hidden border-b border-zinc-100">
         <div
@@ -67,6 +68,7 @@ function VehicleCard({ vehicle, distance = 0, onBook }: Props) {
             className="relative z-10 h-28 w-full object-contain p-1"
             style={{ filter: "drop-shadow(0 6px 16px rgba(0,0,0,0.12))" }}
             whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 1.05 }}
             transition={{ duration: 0.25 }}
           />
         ) : (
@@ -153,7 +155,7 @@ function VehicleCard({ vehicle, distance = 0, onBook }: Props) {
             whileHover={{ scale: 1.02 }}
             disabled={!isDistanceReady}
             onClick={onBook}
-            className="flex items-center gap-1 bg-zinc-900 hover:bg-black disabled:opacity-40 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-colors shadow-xs cursor-pointer disabled:cursor-not-allowed"
+            className="flex items-center gap-1 bg-zinc-900 hover:bg-black active:bg-black disabled:opacity-40 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-colors shadow-xs cursor-pointer disabled:cursor-not-allowed"
           >
             <span>Book</span>
             <ArrowRight size={12} />

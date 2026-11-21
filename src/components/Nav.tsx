@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react'
 import AuthModel from './AuthModel'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { setUser } from '@/redux/userSlice'
-import { signOut } from 'next-auth/react'
+import { signOut, useSession } from 'next-auth/react' 
 import { ChevronRight, Loader2, LogOut, Menu, UserPlus, X } from 'lucide-react'
 import axios from 'axios'
 import { getSocket } from '@/lib/socket'
@@ -18,12 +18,18 @@ function Nav() {
   const router = useRouter()
   const pathName = usePathname()
   const dispatch = useAppDispatch()
+  const { update: updateSession } = useSession()
   const userData = useAppSelector(state => state.user.userData)
 
   const [profileOpen, setProfileOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [pendingCount, setPendingCount] = useState<number>(0)
   const [toggleLoading, setToggleLoading] = useState(false)
+
+  useEffect(() => {
+    setMenuOpen(false)
+    setProfileOpen(false)
+  }, [pathName])
 
   const fetchPendingCount = async () => {
     try {
@@ -40,16 +46,24 @@ function Nav() {
 
       const socket = getSocket()
 
-      if (userData?._id) {
-        socket.emit("identity", userData._id)
+      const registerIdentity = () => {
+        if (userData?._id) {
+          socket.emit("identity", userData._id)
+        }
       }
 
-      socket.on("new_booking", () => {
+      registerIdentity()
+      socket.on("connect", registerIdentity)
+
+      const handleNewBooking = () => {
         setPendingCount((prev) => prev + 1)
-      })
+      }
+
+      socket.on("new_booking", handleNewBooking)
 
       return () => {
-        socket.off("new_booking")
+        socket.off("connect", registerIdentity)
+        socket.off("new_booking", handleNewBooking)
       }
     }
   }, [userData])
@@ -80,7 +94,10 @@ function Nav() {
 
       if (data?.success && data?.role) {
         dispatch(setUser({ ...userData, role: data.role }))
+        await updateSession({ role: data.role })
         setProfileOpen(false)
+        setMenuOpen(false)
+        router.push("/")
         router.refresh()
       }
     } catch (error) {
@@ -229,6 +246,7 @@ function Nav() {
               ) : (
                 <>
                   <button
+                    type="button"
                     className='w-9 h-9 rounded-full bg-white text-black font-bold text-sm cursor-pointer'
                     onClick={() => setProfileOpen((prev) => !prev)}
                   >
@@ -284,6 +302,7 @@ function Nav() {
                           </div>
 
                           <button
+                            type="button"
                             onClick={() => {
                               setProfileOpen(false)
                               handleLogOut()
@@ -310,8 +329,12 @@ function Nav() {
                 </AuthModel>
               ) : (
                 <button
-                  className='w-7.5 h-7.5 rounded-full bg-white text-black font-bold text-xs cursor-pointer'
-                  onClick={() => setProfileOpen((prev) => !prev)}
+                  type="button"
+                  className='w-7.5 h-7.5 rounded-full bg-white text-black font-bold text-xs cursor-pointer touch-manipulation'
+                  onClick={() => {
+                    setMenuOpen(false) 
+                    setProfileOpen((prev) => !prev)
+                  }}
                 >
                   {userData.name?.toUpperCase().charAt(0) || "U"}
                 </button>
@@ -319,8 +342,12 @@ function Nav() {
             </div>
 
             <button
-              className='md:hidden text-white cursor-pointer'
-              onClick={() => setMenuOpen((prev) => !prev)}
+              type="button"
+              className='md:hidden text-white cursor-pointer p-1 touch-manipulation' 
+              onClick={() => {
+                setProfileOpen(false)
+                setMenuOpen((prev) => !prev)
+              }}
             >
               {menuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -336,7 +363,7 @@ function Nav() {
               animate={{ opacity: 0.4 }}
               exit={{ opacity: 0 }}
               onClick={() => setMenuOpen(false)}
-              className='fixed inset-0 bg-black z-30 md:hidden'
+              className='fixed inset-0 bg-black z-40 md:hidden' 
             />
 
             <motion.div
@@ -344,15 +371,14 @@ function Nav() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.2 }}
-              className='fixed top-16 left-1/2 -translate-x-1/2 w-[92%] bg-[#0B0B0B] rounded-2xl shadow-2xl z-40 md:hidden overflow-hidden'
+              className='fixed top-16 left-1/2 -translate-x-1/2 w-[92%] bg-[#0B0B0B] rounded-2xl shadow-2xl z-50 md:hidden overflow-hidden'
             >
               <div className='flex flex-col divide-y divide-white/10'>
                 {userData?.role === "partner" ? (
                   <>
                     <Link
                       href="/"
-                      onClick={() => setMenuOpen(false)}
-                      className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between ${pathName === "/" ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
+                      className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between touch-manipulation ${pathName === "/" ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
                         }`}
                     >
                       <span>Home</span>
@@ -361,8 +387,7 @@ function Nav() {
 
                     <Link
                       href="/partner/pending-requests"
-                      onClick={() => setMenuOpen(false)}
-                      className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between ${pathName === "/partner/pending-requests" ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
+                      className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between touch-manipulation ${pathName === "/partner/pending-requests" ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
                         }`}
                     >
                       <div className='flex items-center gap-2'>
@@ -376,8 +401,7 @@ function Nav() {
 
                     <Link
                       href="/partner/bookings"
-                      onClick={() => setMenuOpen(false)}
-                      className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between ${pathName === "/partner/bookings" ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
+                      className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between touch-manipulation ${pathName === "/partner/bookings" ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
                         }`}
                     >
                       <span>Bookings</span>
@@ -386,8 +410,7 @@ function Nav() {
 
                     <Link
                       href="/partner/active-ride"
-                      onClick={() => setMenuOpen(false)}
-                      className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between ${pathName === "/partner/active-ride" ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
+                      className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between touch-manipulation ${pathName === "/partner/active-ride" ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
                         }`}
                     >
                       <span>Active Ride</span>
@@ -410,7 +433,7 @@ function Nav() {
                           key={index}
                           type="button"
                           onClick={handleBookingsClick}
-                          className={`w-full px-5 py-3 text-sm font-medium transition flex items-center justify-between cursor-pointer text-left ${Active ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
+                          className={`w-full px-5 py-3 text-sm font-medium transition flex items-center justify-between cursor-pointer text-left touch-manipulation ${Active ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
                             }`}
                         >
                           <span>{i}</span>
@@ -423,8 +446,7 @@ function Nav() {
                       <Link
                         key={index}
                         href={href}
-                        onClick={() => setMenuOpen(false)}
-                        className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between ${Active ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
+                        className={`px-5 py-3 text-sm font-medium transition flex items-center justify-between touch-manipulation ${Active ? "text-white bg-white/10 font-semibold" : "text-gray-300 hover:bg-white/5"
                           }`}
                       >
                         <span>{i}</span>
@@ -447,7 +469,7 @@ function Nav() {
               animate={{ opacity: 0.4 }}
               exit={{ opacity: 0 }}
               onClick={() => setProfileOpen(false)}
-              className='fixed inset-0 bg-black z-30 md:hidden'
+              className='fixed inset-0 bg-black z-40 md:hidden'
             />
 
             <motion.div
@@ -455,7 +477,7 @@ function Nav() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className='fixed inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] z-50 md:hidden p-4 pb-5 border-t border-gray-100'
+              className='fixed inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] z-50 md:hidden p-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] border-t border-gray-100'
             >
               <div className='w-9 h-1 bg-gray-200 rounded-full mx-auto mb-2.5' />
 
@@ -471,7 +493,7 @@ function Nav() {
               <div className='mt-2 space-y-1'>
                 <div
                   onClick={handleRoleToggle}
-                  className={`w-full flex items-center justify-between px-2 py-2 text-xs hover:bg-gray-100 font-medium text-gray-800 active:bg-gray-100 rounded-xl transition ${toggleLoading ? "opacity-60 pointer-events-none" : "cursor-pointer"}`}
+                  className={`w-full flex items-center justify-between px-2 py-2 text-xs hover:bg-gray-100 font-medium text-gray-800 active:bg-gray-100 rounded-xl transition touch-manipulation ${toggleLoading ? "opacity-60 pointer-events-none" : "cursor-pointer"}`}
                 >
                   <div className='flex items-center gap-2.5'>
                     {toggleLoading ? (
@@ -497,7 +519,8 @@ function Nav() {
                 </div>
 
                 <button
-                  className='w-full flex items-center gap-2.5 px-2 py-2 text-xs font-medium text-red-600 hover:bg-red-100 active:bg-red-50 rounded-xl cursor-pointer transition'
+                  type="button"
+                  className='w-full flex items-center gap-2.5 px-2 py-2 text-xs font-medium text-red-600 hover:bg-red-100 active:bg-red-50 rounded-xl cursor-pointer transition touch-manipulation'
                   onClick={() => handleLogOut()}
                 >
                   <LogOut size={15} />

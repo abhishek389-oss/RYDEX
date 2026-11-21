@@ -1,7 +1,7 @@
 "use client"
 import axios from 'axios'
 import L from 'leaflet'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet'
 import { motion, AnimatePresence } from 'motion/react'
 import { MapPin, Navigation2 } from 'lucide-react'
@@ -9,7 +9,10 @@ import { MapPin, Navigation2 } from 'lucide-react'
 type Props = {
   pickUp: string
   drop: string
+  initialPickUpCoords?: [number, number]
+  initialDropCoords?: [number, number]
   onChange: (p: string, d: string) => void
+  onCoordsChange?: (p1: [number, number], p2: [number, number]) => void
   onDistance: (d: number) => void
 }
 
@@ -83,12 +86,13 @@ const dropIcon = new L.DivIcon({
   iconAnchor: [12, 12]
 })
 
-export default function SearchMap({ pickUp, drop, onChange, onDistance }: Props) {
-  const [P1, setP1] = useState<[number, number]>()
-  const [P2, setP2] = useState<[number, number]>()
+export default function SearchMap({ pickUp, drop, initialPickUpCoords, initialDropCoords, onChange, onCoordsChange, onDistance }: Props) {
+  const [P1, setP1] = useState<[number, number] | undefined>(initialPickUpCoords)
+  const [P2, setP2] = useState<[number, number] | undefined>(initialDropCoords)
   const [route, setRoute] = useState<[number, number][]>([])
   const [kilometer, setKilometer] = useState<number>(0)
   const [ready, setReady] = useState<boolean>(false)
+  const isDraggedRef = useRef<boolean>(false)
 
   const geoCoding = async (q: string): Promise<[number, number] | null> => {
     try {
@@ -159,10 +163,13 @@ export default function SearchMap({ pickUp, drop, onChange, onDistance }: Props)
   }
 
   const dragPickup = async (lat: number, lon: number) => {
+    isDraggedRef.current = true
     setReady(false)
-    setP1([lat, lon])
+    const nextP1: [number, number] = [lat, lon]
+    setP1(nextP1)
     if (P2) {
-      await loadRoute([lat, lon], P2)
+      await loadRoute(nextP1, P2)
+      if (onCoordsChange) onCoordsChange(nextP1, P2)
     }
     const addr = await reverseGeoCoding(lat, lon)
     if (addr) onChange(addr, drop)
@@ -170,10 +177,13 @@ export default function SearchMap({ pickUp, drop, onChange, onDistance }: Props)
   }
 
   const dragDrop = async (lat: number, lon: number) => {
+    isDraggedRef.current = true
     setReady(false)
-    setP2([lat, lon])
+    const nextP2: [number, number] = [lat, lon]
+    setP2(nextP2)
     if (P1) {
-      await loadRoute(P1, [lat, lon])
+      await loadRoute(P1, nextP2)
+      if (onCoordsChange) onCoordsChange(P1, nextP2)
     }
     const addr = await reverseGeoCoding(lat, lon)
     if (addr) onChange(pickUp, addr)
@@ -181,19 +191,35 @@ export default function SearchMap({ pickUp, drop, onChange, onDistance }: Props)
   }
 
   useEffect(() => {
+    if (isDraggedRef.current) return
+
+    if (initialPickUpCoords && initialDropCoords) {
+      ; (async () => {
+        setReady(false)
+        setP1(initialPickUpCoords)
+        setP2(initialDropCoords)
+        await loadRoute(initialPickUpCoords, initialDropCoords)
+        setReady(true)
+      })()
+      return
+    }
+
     if (pickUp && drop) {
       ; (async () => {
         setReady(false)
         const a = await geoCoding(pickUp)
         const b = await geoCoding(drop)
-        if (!a || !b) return
+        if (!a || !b) {
+          setReady(true)
+          return
+        }
         setP1(a)
         setP2(b)
         await loadRoute(a, b)
         setReady(true)
       })()
     }
-  }, [pickUp, drop])
+  }, [pickUp, drop, initialPickUpCoords, initialDropCoords])
 
   return (
     <div className="relative h-full w-full bg-zinc-100">
@@ -271,9 +297,9 @@ export default function SearchMap({ pickUp, drop, onChange, onDistance }: Props)
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="absolute inset-0 z-99 bg-white/70 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3"
+            className="absolute inset-0 z-[500] bg-white/75 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2.5"
           >
-            <div className="relative w-11 h-11 flex items-center justify-center">
+            <div className="relative w-11 h-11 flex items-center justify-center bg-white rounded-full shadow-md border border-zinc-200">
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -281,9 +307,11 @@ export default function SearchMap({ pickUp, drop, onChange, onDistance }: Props)
               />
               <MapPin size={14} className="text-zinc-900" />
             </div>
-            <p className="text-[11px] font-bold text-zinc-800 uppercase tracking-widest">
-              Updating Route
-            </p>
+            <div className="bg-white/95 border border-zinc-200 px-3.5 py-1.5 rounded-full shadow-xs text-center">
+              <p className="text-[11px] font-bold text-zinc-900 uppercase tracking-widest">
+                Calculating Route & Distance...
+              </p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -295,7 +323,7 @@ export default function SearchMap({ pickUp, drop, onChange, onDistance }: Props)
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="absolute bottom-20 left-4 z-500 flex items-center gap-2 bg-white border border-zinc-200 px-3.5 py-2 rounded-xl shadow-lg"
+            className="absolute bottom-10 left-4 z-[500] flex items-center gap-2 bg-white border border-zinc-200 px-3.5 py-2 rounded-xl shadow-lg"
           >
             <Navigation2 size={13} className="text-zinc-900 fill-zinc-900" />
             <span className="text-xs font-bold text-zinc-900">{kilometer} km</span>

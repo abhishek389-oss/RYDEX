@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import Google from "next-auth/providers/google";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+    trustHost: true,
     providers: [
         Credentials({
             credentials: {
@@ -22,7 +23,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             },
             async authorize(credentials) {
 
-                const email = credentials.email
+                const email = (credentials.email as string)?.trim().toLowerCase()
                 const password = credentials.password as string
 
                 if (!email || !password) {
@@ -68,15 +69,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
             try {
                 await connectDB()
-                let exitingUser = await User.findOne({ email: user.email })
+                const normalizedEmail = user.email?.trim().toLowerCase()
+                let exitingUser = await User.findOne({ email: normalizedEmail })
                 if (!exitingUser) {
                     exitingUser = await User.create({
                         name: user.name,
-                        email: user.email,
+                        email: normalizedEmail,
                         isEmailVerified: true
                     })
                 }
-                user.id = exitingUser._id
+                user.id = exitingUser._id.toString()
                 user.name = exitingUser.name
                 user.role = exitingUser.role
 
@@ -88,7 +90,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
         },
 
-        async jwt({ token, user }) {
+        async jwt({ token, user, trigger, session }) {
             if (user) {
                 Object.assign(token, {
                     id: user.id,
@@ -96,6 +98,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     email: user.email,
                     role: user.role
                 })
+            }
+            if (trigger === "update" && session?.role) {
+                token.role = session.role
             }
             return token
         },
@@ -114,8 +119,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
     },
     pages: {
-        signIn: "/signin",
-        error: "/signin"
+        signIn: "/",
+        error: "/"
     },
     session: {
         strategy: "jwt",

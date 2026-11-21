@@ -14,42 +14,44 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        await User.collection.createIndex({ location: "2dsphere" })
 
-        const partners=await User.find({
-            role:"partner",
-            isOnline:true,
-            partnerStatus:"approved",
-            location:{
-                $near:{
-                    $geometry:{
-                        type:"Point",
-                        coordinates:[longitude,latitude]
+        const partners = await User.find({
+            role: "partner",
+            isOnline: true,
+            partnerStatus: "approved",
+            location: {
+                $near: {
+                    $geometry: {
+                        type: "Point",
+                        coordinates: [Number(longitude), Number(latitude)]
                     },
-                    $maxDistance:10000
+                    $maxDistance: 10000
                 }
             }
         })
 
-        const partnerIDs=partners.map((p) => p._id)
-        if (partnerIDs.length==0) {
-          return NextResponse.json(
-            [],
-            { status: 200 }
-          );
+        const partnerIDs = partners.map((p) => p._id)
+        if (partnerIDs.length == 0) {
+            return NextResponse.json(
+                [],
+                { status: 200 }
+            );
         }
 
-        const vehicles=await Vehicle.find({
-            owner:{$in:partnerIDs},
-            type:vehicleType,
-            status:"approved",
-            isActive:true
+        const vehicles = await Vehicle.find({
+            owner: { $in: partnerIDs },
+            type: vehicleType,
+            status: "approved",
+            isActive: true
         }).lean()
-        
+
         return NextResponse.json(
             vehicles,
             { status: 200 }
         );
     } catch (error) {
+        console.error("NEARBY ERROR:", error)
         return NextResponse.json(
             { message: "Near-by vehicles error", error },
             { status: 500 }

@@ -134,7 +134,7 @@ function PartnerDashboard() {
     const progressPercentage = Math.max(0, Math.min(100, ((activeStep - 1) / (TOTAL_STEPS - 1)) * 100))
 
     return (
-        <div className='min-h-screen bg-linear-to-br from-gray-100 to-gray-200 px-4 pt-20 pb-10'>
+        <div className='min-h-dvh bg-linear-to-br from-gray-100 to-gray-200 px-4 sm:px-6 pt-24 pb-12'>
             <div className='max-w-4xl mx-auto space-y-5 sm:space-y-6'>
                 <div>
                     <h1 className='text-lg sm:text-xl font-bold text-gray-900'>Partner Onboarding</h1>
@@ -164,8 +164,9 @@ function PartnerDashboard() {
                                     <motion.div
                                         key={s.id}
                                         whileHover={!locked ? { scale: 1.05 } : {}}
+                                        whileTap={!locked ? { scale: 0.95 } : {}}
                                         onClick={() => goToStep(s)}
-                                        className='flex flex-col items-center cursor-pointer w-14'
+                                        className='flex flex-col items-center cursor-pointer w-14 touch-manipulation select-none'
                                     >
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all text-xs font-semibold
                                             ${completed ? "bg-black text-white border-black"
@@ -318,7 +319,7 @@ function PartnerDashboard() {
                         </div>
                         <button
                             onClick={() => router.push("/partner/bookings")}
-                            className='w-full sm:w-auto bg-white hover:bg-gray-100 text-black px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0'
+                            className='w-full sm:w-auto bg-white hover:bg-gray-100 text-black px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0 touch-manipulation'
                         >
                             Go to Bookings <ArrowRight size={14} />
                         </button>

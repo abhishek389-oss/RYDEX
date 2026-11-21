@@ -125,13 +125,19 @@ export default function PartnerActiveRidePage() {
   useEffect(() => {
     if (!navigator.geolocation || !booking?._id || status === "completed") return
 
+    const socket = getSocket()
+    const joinRideRoom = () => {
+      socket.emit("join_ride", booking._id)
+    }
+    joinRideRoom()
+    socket.on("connect", joinRideRoom)
+
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const latitude = pos.coords.latitude
         const longitude = pos.coords.longitude
         setDriverPosition([latitude, longitude])
 
-        const socket = getSocket()
         socket.emit("driver_location_update", {
           bookingId: booking._id,
           latitude,
@@ -150,6 +156,7 @@ export default function PartnerActiveRidePage() {
     )
 
     return () => {
+      socket.off("connect", joinRideRoom)
       navigator.geolocation.clearWatch(watchId)
     }
   }, [booking?._id, status])
@@ -189,7 +196,7 @@ export default function PartnerActiveRidePage() {
 
   if (loading) {
     return (
-      <div className="h-screen w-full bg-zinc-950 flex flex-col items-center justify-center gap-2">
+      <div className="h-dvh w-full bg-zinc-950 flex flex-col items-center justify-center gap-2">
         <div className="w-7 h-7 rounded-full border-2 border-white/20 border-t-white animate-spin" />
         <p className="text-white/40 text-[11px] tracking-widest uppercase font-medium">
           Loading ride...
@@ -199,8 +206,8 @@ export default function PartnerActiveRidePage() {
   }
 
   return (
-    <div className="h-screen w-full bg-zinc-100 flex flex-col lg:flex-row overflow-hidden relative">
-      <div className="relative flex-1 h-[60vh] lg:h-full w-full z-0">
+    <div className="h-dvh w-full bg-zinc-100 flex flex-col lg:flex-row overflow-hidden relative">
+      <div className="relative flex-1 min-h-0 w-full z-0">
         <LiveRideMap
           driverLocation={driverPosition}
           pickupLocation={pickupPosition}
@@ -229,25 +236,26 @@ export default function PartnerActiveRidePage() {
         </motion.div>
       </div>
 
-      <div className="lg:hidden flex flex-col bg-white border-t border-zinc-200 rounded-t-2xl shadow-2xl z-20 transition-all duration-300">
-        <div
+      <div className="lg:hidden shrink-0 flex flex-col bg-white border-t border-zinc-200 rounded-t-2xl shadow-2xl z-20">
+        <button
+          type="button"
           onClick={() => setMobileDrawerOpen(!mobileDrawerOpen)}
-          className="w-full py-2 flex flex-col items-center justify-center cursor-pointer border-b border-zinc-100"
+          className="w-full py-2.5 flex flex-col items-center justify-center cursor-pointer border-b border-zinc-100 touch-manipulation"
         >
-          <div className="w-10 h-1 bg-zinc-300 rounded-full mb-1" />
+          <div className="w-10 h-1 bg-zinc-300 rounded-full mb-1.5" />
           <div className="flex items-center justify-between w-full px-4">
             <span className="text-xs font-bold text-zinc-900">
-              {cfg.label} {isActive ? `(${Math.round(displayEta)} min)` : ""}
+              {cfg.label} {isActive && displayEta > 0 ? `(${Math.max(1, Math.round(displayEta))} min)` : ""}
             </span>
             <ChevronUp
               size={16}
-              className={`text-zinc-500 transition-transform ${mobileDrawerOpen ? "rotate-180" : ""}`}
+              className={`text-zinc-500 transition-transform duration-200 ${mobileDrawerOpen ? "rotate-180" : ""}`}
             />
           </div>
-        </div>
+        </button>
 
         {mobileDrawerOpen && (
-          <div className="max-h-[38vh] overflow-y-auto px-3 py-2">
+          <div className="max-h-[48dvh] overflow-y-auto overscroll-contain touch-pan-y px-3 py-2 pb-5">
             <PanelContent {...panelProps} />
           </div>
         )}
@@ -271,7 +279,7 @@ export default function PartnerActiveRidePage() {
               <div className="flex items-center gap-1.5 bg-white/10 px-2 py-0.5 rounded-full">
                 <Zap size={11} className="text-amber-400" />
                 <span className="text-white text-[11px] font-semibold">
-                  {Math.round(displayEta)} min
+                  {displayEta > 0 ? `${Math.max(1, Math.round(displayEta))} min` : "Locating..."}
                 </span>
               </div>
             )}

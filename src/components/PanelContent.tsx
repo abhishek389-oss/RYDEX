@@ -166,12 +166,11 @@ export default function PanelContent({
 
             {canChat && (
               <button
+                type="button"
                 onClick={onChatToggle}
-                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
-                  chatOpen ? "bg-white text-zinc-950" : "bg-zinc-800 hover:bg-zinc-700 text-white"
-                }`}
+                className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer bg-zinc-800 hover:bg-zinc-700 text-white"
               >
-                {chatOpen ? <X size={14} /> : <MessageSquare size={13} />}
+                <MessageSquare size={13} />
               </button>
             )}
           </div>
@@ -212,19 +211,22 @@ export default function PanelContent({
 
       <AnimatePresence>
         {chatOpen && canChat && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 360 }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.25 }}
-            className="overflow-hidden rounded-xl border border-zinc-100 bg-white"
-          >
-            <RideChat
-              bookingId={booking._id}
-              currentRole={currentRole}
-              otherName={booking.user?.name || "Customer"}
-            />
-          </motion.div>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[1000] p-4">
+            <motion.div
+              initial={{ scale: 0.94, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.94, opacity: 0, y: 12 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-md h-[72dvh] max-h-[540px] rounded-2xl overflow-hidden shadow-2xl border border-zinc-200 bg-white"
+            >
+              <RideChat
+                bookingId={booking._id}
+                currentRole={currentRole}
+                otherName={booking.user?.name || "Customer"}
+                onClose={onChatToggle}
+              />
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

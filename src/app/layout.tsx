@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next"; // Added Viewport for iPhone/mobile scaling compatibility
 import { Geist, Geist_Mono, Poppins } from "next/font/google";
 import "./globals.css";
 import "leaflet/dist/leaflet.css"
@@ -25,13 +25,18 @@ export const metadata: Metadata = {
   description: "Rydex is a modern smart mobility platform that connects passengers with reliable vehicle bookings in real time, featuring seamless reservations, transparent pricing, and instant fleet coordination.",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-    // className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className={`min-h-full flex flex-col ${poppins.className} antialiased`}>
+      <body className={`min-h-dvh flex flex-col overflow-x-hidden ${poppins.className} antialiased`}> {/* Changed min-h-full to min-h-dvh & overflow-x-hidden for iOS Safari */}
         <SessProvider>
           <ReduxProvider>
             {children}

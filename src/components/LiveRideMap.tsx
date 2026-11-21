@@ -1,6 +1,6 @@
 "use client"
 import React, { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import axios from 'axios'
@@ -39,6 +39,27 @@ const driverIcon = new L.DivIcon({
   iconAnchor: [26, 26],
 })
 
+function FitRideBounds({ points }: { points: [number, number][] }) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!map || points.length === 0) return
+    try {
+      map.invalidateSize()
+      if (points.length === 1) {
+        map.setView(points[0], 15)
+      } else {
+        const bounds = L.latLngBounds(points)
+        map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16, animate: true })
+      }
+    } catch (e) {
+      console.log(e)
+    }
+  }, [map, points])
+
+  return null
+}
+
 export default function LiveRideMap({
   driverLocation,
   pickupLocation,
@@ -46,8 +67,14 @@ export default function LiveRideMap({
   mapStatus,
   onStats,
 }: LiveRideMapProps) {
+  const [mounted, setMounted] = useState(false)
   const [routeToPickup, setRouteToPickup] = useState<[number, number][]>([])
   const [routeToDrop, setRouteToDrop] = useState<[number, number][]>([])
+
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
 
   const effectiveDriver = driverLocation || pickupLocation
 
@@ -115,9 +142,9 @@ export default function LiveRideMap({
         if (onStats) {
           onStats({
             distanceToPickup: pickupRoute?.distance ? pickupRoute.distance / 1000 : 0,
-            etaToPickup: pickupRoute?.duration ? Math.ceil(pickupRoute.duration / 60) : 5,
+            etaToPickup: pickupRoute?.duration ? Math.ceil(pickupRoute.duration / 60) : 0,
             distanceToDrop: dropRoute?.distance ? dropRoute.distance / 1000 : 0,
-            etaToDrop: dropRoute?.duration ? Math.ceil(dropRoute.duration / 60) : 15,
+            etaToDrop: dropRoute?.duration ? Math.ceil(dropRoute.duration / 60) : 0,
           })
         }
       } else {
@@ -134,7 +161,7 @@ export default function LiveRideMap({
             distanceToPickup: 0,
             etaToPickup: 0,
             distanceToDrop: dropRoute?.distance ? dropRoute.distance / 1000 : 0,
-            etaToDrop: dropRoute?.duration ? Math.ceil(dropRoute.duration / 60) : 15,
+            etaToDrop: dropRoute?.duration ? Math.ceil(dropRoute.duration / 60) : 0,
           })
         }
       }
@@ -149,9 +176,20 @@ export default function LiveRideMap({
 
   const centerPos = pickupLocation || driverLocation || [25.4358, 81.8463]
 
+  const activePoints: [number, number][] = [
+    ...(driverLocation ? [driverLocation as [number, number]] : []),
+    ...(showPickupMarker && pickupLocation ? [pickupLocation as [number, number]] : []),
+    ...(dropLocation ? [dropLocation as [number, number]] : []),
+  ]
+
+  if (!mounted) {
+    return <div className="relative h-full w-full bg-zinc-100" />
+  }
+
   return (
     <div className="relative h-full w-full">
       <MapContainer
+        key="live-ride-leaflet-map"
         center={centerPos as any}
         zoom={14}
         zoomControl={false}
@@ -161,6 +199,8 @@ export default function LiveRideMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; OpenStreetMap'
         />
+
+        <FitRideBounds points={activePoints} />
 
         {showPickupMarker && (
           <Marker position={pickupLocation as any} icon={pickupIcon} />

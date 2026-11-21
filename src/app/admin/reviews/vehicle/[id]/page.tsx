@@ -33,20 +33,25 @@ function VehicleReviewContent() {
     const [rejectionReason, setRejectionReason] = useState("");
     const [approveLoading, setApproveLoading] = useState(false);
     const [rejectLoading, setRejectLoading] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         setShowApprove(false)
         setShowReject(false)
         setRejectionReason("")
-        if (!id) return
+        if (!id) {
+            setLoading(false)
+            return
+        }
         const load = async () => {
+            setLoading(true)
             try {
                 const result = await axios.get(`/api/admin/reviews/vehicle/${id}`)
                 setData(result.data)
-                console.log(result)
             } catch (error: any) {
                 console.log(error.response?.data?.message ?? error)
+            } finally {
+                setLoading(false)
             }
         }
         load()
@@ -54,8 +59,52 @@ function VehicleReviewContent() {
 
     if (loading) {
         return (
-            <div className='min-h-screen grid place-items-center text-gray-500 text-sm'>
-                Loading Partner...
+            <div className='min-h-dvh bg-linear-to-br from-gray-100 to-gray-200'>
+                <div className='sticky top-0 z-40 backdrop-blur-xl bg-white/80 border-b border-gray-200'>
+                    <div className='max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4'>
+                        <div className='flex items-center gap-3'>
+                            <div className='w-8 h-8 rounded-full bg-gray-200 animate-pulse' />
+                            <div className='space-y-1.5'>
+                                <div className='w-32 h-3.5 bg-gray-200 rounded animate-pulse' />
+                                <div className='w-44 h-2.5 bg-gray-200 rounded animate-pulse' />
+                            </div>
+                        </div>
+                        <div className='w-28 h-6 rounded-full bg-gray-200 animate-pulse' />
+                    </div>
+                </div>
+
+                <main className='max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-7 grid lg:grid-cols-3 gap-5 lg:gap-6'>
+                    <div className='h-72 sm:h-84 rounded-2xl border border-gray-200 bg-white p-4 flex flex-col items-center justify-center gap-2.5'>
+                        <CircleDashed size={24} className='text-gray-400 animate-spin' />
+                        <span className='text-xs font-medium text-gray-400'>Loading vehicle details...</span>
+                    </div>
+
+                    <div className='lg:col-span-2 space-y-4 sm:space-y-5'>
+                        <div className='bg-white rounded-2xl p-5 border border-gray-200 space-y-4'>
+                            <div className='w-36 h-4 bg-gray-200 rounded animate-pulse' />
+                            <div className='grid grid-cols-1 sm:grid-cols-3 gap-3'>
+                                {[1, 2, 3].map((item) => (
+                                    <div key={item} className='bg-gray-50 border border-gray-200/70 rounded-xl p-3 space-y-2'>
+                                        <div className='w-20 h-2.5 bg-gray-200 rounded animate-pulse' />
+                                        <div className='w-24 h-4 bg-gray-200 rounded animate-pulse' />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className='bg-white rounded-2xl p-5 border border-gray-200 space-y-4'>
+                            <div className='w-44 h-4 bg-gray-200 rounded animate-pulse' />
+                            <div className='grid grid-cols-1 sm:grid-cols-3 gap-3'>
+                                {[1, 2, 3].map((item) => (
+                                    <div key={item} className='bg-gray-50 border border-gray-200/70 rounded-xl p-3 space-y-2'>
+                                        <div className='w-20 h-2.5 bg-gray-200 rounded animate-pulse' />
+                                        <div className='w-16 h-4 bg-gray-200 rounded animate-pulse' />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </main>
             </div>
         )
     }
@@ -89,7 +138,7 @@ function VehicleReviewContent() {
     }
 
     return (
-        <div className='min-h-screen bg-linear-to-br from-gray-100 to-gray-200'>
+        <div className='min-h-dvh bg-linear-to-br from-gray-100 to-gray-200'>
             <div className='sticky top-0 z-40 backdrop-blur-xl bg-white/80 border-b border-gray-200'>
                 <div className='max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4'>
                     <div className='flex items-center gap-3 min-w-0'>
@@ -328,7 +377,7 @@ function VehicleReviewContent() {
 
 export default function Page() {
     return (
-        <Suspense fallback={<div className="min-h-screen grid place-items-center text-gray-500 text-sm">Loading...</div>}>
+        <Suspense fallback={<div className="min-h-dvh grid place-items-center text-gray-500 text-sm">Loading...</div>}>
             <VehicleReviewContent />
         </Suspense>
     )

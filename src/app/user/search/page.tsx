@@ -3,7 +3,7 @@ import dynamic from 'next/dynamic'
 import { ArrowLeft, Bike, Car, MapPin, Navigation, RefreshCcw, Search, Truck, Zap } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import React, { Suspense, useEffect, useState } from 'react'
+import React, { Suspense, useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
 import { VehicleType } from '@/models/vehicle.model'
 import VehicleCard from '@/components/VehicleCard'
@@ -11,7 +11,12 @@ import Nav from '@/components/Nav'
 
 const SearchMap = dynamic(() => import('@/components/SearchMap'), {
   ssr: false,
-  loading: () => <div className="w-full h-full bg-zinc-100 animate-pulse" />
+  loading: () => (
+    <div className="w-full h-full bg-zinc-100 flex flex-col items-center justify-center gap-2">
+      <div className="w-7 h-7 rounded-full border-2 border-zinc-300 border-t-zinc-900 animate-spin" />
+      <p className="text-[11px] font-bold text-zinc-600 uppercase tracking-widest">Loading Map...</p>
+    </div>
+  )
 })
 
 const VEHICLE_META: any = {
@@ -48,11 +53,21 @@ function SearchComponents() {
   const [drop, setDrop] = useState(params.get("drop") || "")
   const mobile = params.get("mobile") || ""
 
-  const pickUpLat = Number(params.get("pickuplat") || params.get("pickUpLat") || 0)
-  const pickUpLon = Number(params.get("pickuplon") || params.get("pickUpLon") || 0)
-  const dropLat = Number(params.get("droplat") || params.get("dropLat") || 0)
-  const dropLon = Number(params.get("droplon") || params.get("dropLon") || 0)
+  const [pickUpLat, setPickUpLat] = useState<number>(Number(params.get("pickuplat") || params.get("pickUpLat") || 0))
+  const [pickUpLon, setPickUpLon] = useState<number>(Number(params.get("pickuplon") || params.get("pickUpLon") || 0))
+  const [dropLat, setDropLat] = useState<number>(Number(params.get("droplat") || params.get("dropLat") || 0))
+  const [dropLon, setDropLon] = useState<number>(Number(params.get("droplon") || params.get("dropLon") || 0))
   const vehicle = params.get("vehicle") || ""
+
+  const initialPickUpCoords = useMemo<[number, number] | undefined>(
+    () => (pickUpLat && pickUpLon ? [pickUpLat, pickUpLon] : undefined),
+    []
+  )
+
+  const initialDropCoords = useMemo<[number, number] | undefined>(
+    () => (dropLat && dropLon ? [dropLat, dropLon] : undefined),
+    []
+  )
 
   const [vehicles, setVehicles] = useState<IVehicle[]>([])
   const [loading, setLoading] = useState(false)
@@ -82,9 +97,9 @@ function SearchComponents() {
   }, [pickUpLat, pickUpLon, vehicle])
 
   return (
-    <div className="min-h-screen bg-zinc-100 text-zinc-900 overflow-x-hidden pt-16">
+    <div className="min-h-dvh bg-zinc-100 text-zinc-900 overflow-x-hidden pt-16">
       <Nav />
-      <div className="absolute top-20 left-4 z-50">
+      <div className="fixed top-20 left-4 z-30">
         <motion.button
           whileTap={{ scale: 0.88 }}
           onClick={() => router.back()}
@@ -94,13 +109,21 @@ function SearchComponents() {
         </motion.button>
       </div>
 
-      <div className="relative w-full h-[46vh] z-0">
+      <div className="relative w-full h-[42vh] sm:h-[46vh] z-0">
         <SearchMap
           pickUp={pickUp}
           drop={drop}
+          initialPickUpCoords={initialPickUpCoords}
+          initialDropCoords={initialDropCoords}
           onChange={(p, d) => {
             setPickUp(p)
             setDrop(d)
+          }}
+          onCoordsChange={(p1, p2) => {
+            setPickUpLat(p1[0])
+            setPickUpLon(p1[1])
+            setDropLat(p2[0])
+            setDropLon(p2[1])
           }}
           onDistance={setKilometer}
         />
@@ -110,15 +133,15 @@ function SearchComponents() {
         initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 180, damping: 22 }}
-        className="relative z-20 -mt-8 bg-white rounded-t-[24px] border-t border-zinc-200 shadow-[0_-6px_30px_rgba(0,0,0,0.05)] pt-4 pb-16 min-h-[56vh]"
+        className="relative z-20 -mt-6 bg-white rounded-t-3xl border-t border-zinc-200 shadow-[0_-6px_30px_rgba(0,0,0,0.05)] pt-5 pb-16 min-h-[58vh]"
       >
-        <div className="px-4 lg:px-6 max-w-5xl mx-auto">
+        <div className="px-4 sm:px-6 max-w-5xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-zinc-50 border border-zinc-200/90 rounded-xl overflow-hidden mb-4"
           >
-            <div className="flex gap-2.5 px-3 py-2 border-b border-zinc-100 items-center">
+            <div className="flex gap-2.5 px-3 py-2.5 border-b border-zinc-100 items-center">
               <div className="w-2 h-2 rounded-full bg-zinc-900 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-[9px] text-zinc-400 uppercase tracking-widest font-bold">PICKUP</p>
@@ -129,7 +152,7 @@ function SearchComponents() {
               <MapPin size={12} className="text-zinc-400 shrink-0" />
             </div>
 
-            <div className="flex gap-2.5 px-3 py-2 items-center">
+            <div className="flex gap-2.5 px-3 py-2.5 items-center">
               <div className="w-2 h-2 rounded-full border-2 border-zinc-900 bg-white shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-[9px] text-zinc-400 uppercase tracking-widest font-bold">DROP</p>
@@ -141,7 +164,7 @@ function SearchComponents() {
             </div>
           </motion.div>
 
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3.5">
             <div>
               <h2 className="text-zinc-900 text-base font-black tracking-tight">
                 {loading
@@ -158,7 +181,7 @@ function SearchComponents() {
             </div>
 
             <AnimatePresence mode="wait">
-              {loading ? (
+              {loading || kilometer === 0 ? (
                 <motion.div
                   key="searching"
                   initial={{ opacity: 0, scale: 0.85 }}
@@ -167,7 +190,9 @@ function SearchComponents() {
                   className="flex items-center gap-1.5 bg-zinc-100 border border-zinc-200 px-2.5 py-1 rounded-full"
                 >
                   <div className="w-3 h-3 rounded-full border-2 border-zinc-300 border-t-zinc-700 animate-spin" />
-                  <span className="text-zinc-500 text-[11px] font-semibold">Searching...</span>
+                  <span className="text-zinc-500 text-[11px] font-semibold">
+                    {loading ? "Searching rides..." : "Calculating fare..."}
+                  </span>
                 </motion.div>
               ) : vehicles.length > 0 ? (
                 <motion.div
@@ -209,7 +234,7 @@ function SearchComponents() {
             )}
           </AnimatePresence>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {vehicles.map((v, index) => {
               const fareAmount = Math.round((v.baseFare || 0) + (v.pricePerKM || 0) * kilometer)
 
