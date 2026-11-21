@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react'
 import AuthModel from './AuthModel'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { setUser } from '@/redux/userSlice'
-import { signOut, useSession } from 'next-auth/react' 
+import { signOut, useSession } from 'next-auth/react'
 import { ChevronRight, Loader2, LogOut, Menu, UserPlus, X } from 'lucide-react'
 import axios from 'axios'
 import { getSocket } from '@/lib/socket'
@@ -18,7 +18,7 @@ function Nav() {
   const router = useRouter()
   const pathName = usePathname()
   const dispatch = useAppDispatch()
-  const { update: updateSession } = useSession()
+  const { status, update: updateSession } = useSession()
   const userData = useAppSelector(state => state.user.userData)
 
   const [profileOpen, setProfileOpen] = useState(false)
@@ -237,7 +237,9 @@ function Nav() {
 
           <div className='flex items-center gap-3 relative'>
             <div className='hidden md:block relative'>
-              {!userData ? (
+              {status === "loading" && !userData ? (
+                <div className='w-9 h-9 rounded-full bg-white/20 animate-pulse' />
+              ) : !userData ? (
                 <AuthModel>
                   <span className="rounded-full bg-white text-black hover:bg-gray-200 px-4 py-1.5 text-xs font-semibold transition cursor-pointer">
                     Sign In
@@ -321,7 +323,9 @@ function Nav() {
             </div>
 
             <div className='md:hidden'>
-              {!userData ? (
+              {status === "loading" && !userData ? (
+                <div className='w-7.5 h-7.5 rounded-full bg-white/20 animate-pulse' />
+              ) : !userData ? (
                 <AuthModel>
                   <span className="rounded-full bg-white text-black hover:bg-gray-200 px-3.5 py-1 text-xs font-semibold transition cursor-pointer">
                     Sign In
@@ -332,7 +336,7 @@ function Nav() {
                   type="button"
                   className='w-7.5 h-7.5 rounded-full bg-white text-black font-bold text-xs cursor-pointer touch-manipulation'
                   onClick={() => {
-                    setMenuOpen(false) 
+                    setMenuOpen(false)
                     setProfileOpen((prev) => !prev)
                   }}
                 >
@@ -343,7 +347,7 @@ function Nav() {
 
             <button
               type="button"
-              className='md:hidden text-white cursor-pointer p-1 touch-manipulation' 
+              className='md:hidden text-white cursor-pointer p-1 touch-manipulation'
               onClick={() => {
                 setProfileOpen(false)
                 setMenuOpen((prev) => !prev)
@@ -363,7 +367,7 @@ function Nav() {
               animate={{ opacity: 0.4 }}
               exit={{ opacity: 0 }}
               onClick={() => setMenuOpen(false)}
-              className='fixed inset-0 bg-black z-40 md:hidden' 
+              className='fixed inset-0 bg-black z-40 md:hidden'
             />
 
             <motion.div
