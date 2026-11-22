@@ -24,8 +24,10 @@ function Nav() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [pendingCount, setPendingCount] = useState<number>(0)
-  const [toggleLoading, setToggleLoading] = useState(false)
+  const [switchingTo, setSwitchingTo] = useState<"user" | "partner" | null>(null)
   const [logoutLoading, setLogoutLoading] = useState(false)
+
+  const toggleLoading = switchingTo !== null
 
   useEffect(() => {
     setMenuOpen(false)
@@ -95,22 +97,27 @@ function Nav() {
   const handleRoleToggle = async () => {
     if (!userData || toggleLoading) return
 
+    const targetRole = userData.role === "partner" ? "user" : "partner"
+    setSwitchingTo(targetRole)
+    setProfileOpen(false)
+    setMenuOpen(false)
+
     try {
-      setToggleLoading(true)
       const { data } = await axios.post("/api/user/toggle-role")
 
       if (data?.success && data?.role) {
-        dispatch(setUser({ ...userData, role: data.role }))
         await updateSession({ role: data.role })
-        setProfileOpen(false)
-        setMenuOpen(false)
-        router.push("/")
+        dispatch(setUser({ ...userData, role: data.role }))
+        if (pathName !== "/") {
+          router.push("/")
+        }
         router.refresh()
+        await new Promise((resolve) => setTimeout(resolve, 450))
       }
     } catch (error) {
       console.error("Role toggle failed:", error)
     } finally {
-      setToggleLoading(false)
+      setSwitchingTo(null)
     }
   }
 
@@ -143,7 +150,7 @@ function Nav() {
                 <p className="text-sm font-bold text-gray-900">
                   {logoutLoading
                     ? "Logging out..."
-                    : userData?.role === "partner"
+                    : switchingTo === "user"
                       ? "Switching to User Mode..."
                       : "Switching to Partner Mode..."}
                 </p>
