@@ -73,11 +73,19 @@ function Nav() {
 
   const handleLogOut = async () => {
     if (logoutLoading) return
+    setProfileOpen(false)
+    setMenuOpen(false)
     setLogoutLoading(true)
     try {
+      await signOut({ redirect: false })
       dispatch(setUser(null))
-      await signOut({ callbackUrl: "/" })
-      setProfileOpen(false)
+      if (pathName !== "/") {
+        router.push("/")
+      }
+      router.refresh()
+      await new Promise((resolve) => setTimeout(resolve, 400))
+    } catch (error) {
+      console.error("Logout error:", error)
     } finally {
       setLogoutLoading(false)
     }
@@ -137,7 +145,7 @@ function Nav() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-100 bg-black/45 backdrop-blur-xs flex items-center justify-center p-4"
+            className="fixed inset-0 z-[999] bg-black/45 backdrop-blur-xs flex items-center justify-center p-4"
           >
             <motion.div
               initial={{ scale: 0.92, opacity: 0 }}
@@ -324,10 +332,7 @@ function Nav() {
                           <button
                             type="button"
                             disabled={logoutLoading}
-                            onClick={() => {
-                              setProfileOpen(false)
-                              handleLogOut()
-                            }}
+                            onClick={handleLogOut}
                             className='w-full text-left px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-60 rounded-xl transition flex items-center gap-2.5 cursor-pointer'
                           >
                             {logoutLoading ? <Loader2 size={15} className='text-red-500 animate-spin' /> : <LogOut size={15} className='text-red-500' />}
@@ -545,7 +550,7 @@ function Nav() {
                   type="button"
                   disabled={logoutLoading}
                   className='w-full flex items-center gap-2.5 px-2 py-2 text-xs font-medium text-red-600 hover:bg-red-100 active:bg-red-50 disabled:opacity-60 rounded-xl cursor-pointer transition touch-manipulation'
-                  onClick={() => handleLogOut()}
+                  onClick={handleLogOut}
                 >
                   {logoutLoading ? <Loader2 size={15} className='animate-spin' /> : <LogOut size={15} />}
                   <span>{logoutLoading ? "Logging out..." : "LogOut"}</span>

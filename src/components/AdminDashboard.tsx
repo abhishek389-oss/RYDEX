@@ -1,6 +1,6 @@
 "use client"
 import axios from 'axios'
-import { CheckCircle2, Clock, LogOut, Truck, User2Icon, Users, Video, XCircle } from 'lucide-react'
+import { CheckCircle2, Clock, Loader2, LogOut, Truck, User2Icon, Users, Video, XCircle } from 'lucide-react'
 import Image from 'next/image'
 import React, { useEffect, useState } from 'react'
 import KeyPerformance from './KeyPerformance'
@@ -10,6 +10,9 @@ import ContentList from './ContentList'
 import { signOut } from 'next-auth/react'
 import AdminEarning from './AdminEarning'
 import { getSocket } from '@/lib/socket'
+import { useRouter } from 'next/navigation'
+import { useAppDispatch } from '@/redux/hooks'
+import { setUser } from '@/redux/userSlice'
 
 type Stats = {
   totalApprovedPartners: number
@@ -21,11 +24,14 @@ type Stats = {
 type Tab = "partner" | "kyc" | "vehicle"
 
 function AdminDashboard() {
+  const router = useRouter()
+  const dispatch = useAppDispatch()
   const [stats, setStats] = useState<Stats | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>("partner")
   const [partnerReviews, setPartnerReviews] = useState<any>()
   const [pendingKyc, setPendingKyc] = useState<any>()
   const [vehicleReviews, setVehicleReviews] = useState<any>()
+  const [logoutLoading, setLogoutLoading] = useState(false)
 
   const handleGetData = async () => {
     try {
@@ -33,7 +39,6 @@ function AdminDashboard() {
       setStats(data.stats)
       setPartnerReviews(data.pendingPartnerReviews)
       setVehicleReviews(data.pendingVehicle)
-      console.log(data)
     } catch (error) {
       console.log(error)
     }
@@ -89,8 +94,48 @@ function AdminDashboard() {
     }
   }, [])
 
+  const handleAdminLogout = async () => {
+    if (logoutLoading) return
+    setLogoutLoading(true)
+    try {
+      await signOut({ redirect: false })
+      dispatch(setUser(null))
+      router.push("/")
+      router.refresh()
+      await new Promise((resolve) => setTimeout(resolve, 400))
+    } catch (error) {
+      console.error("Admin logout error:", error)
+    } finally {
+      setLogoutLoading(false)
+    }
+  }
+
   return (
     <div className='min-h-screen bg-linear-to-br from-gray-100 to-gray-200'>
+      <AnimatePresence>
+        {logoutLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[999] bg-black/45 backdrop-blur-xs flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              className="bg-white text-black px-6 py-4 rounded-2xl shadow-2xl border border-gray-100 flex items-center gap-3"
+            >
+              <Loader2 size={20} className="animate-spin text-black shrink-0" />
+              <div>
+                <p className="text-sm font-bold text-gray-900">Logging out...</p>
+                <p className="text-[11px] text-gray-500">Please wait a moment</p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className='sticky top-0 bg-white/80 backdrop-blur-lg border-b z-40'>
         <div className='max-w-7xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between'>
           <div className='flex items-center gap-2.5'>
@@ -105,11 +150,22 @@ function AdminDashboard() {
             </div>
 
             <button 
-              onClick={() => signOut({ callbackUrl: "/login" })}
-              className='flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border border-gray-200 bg-white hover:bg-gray-100 text-red-700 transition cursor-pointer'
+              type="button"
+              disabled={logoutLoading}
+              onClick={handleAdminLogout}
+              className='flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border border-gray-200 bg-white hover:bg-gray-100 disabled:opacity-60 text-red-700 transition cursor-pointer'
             >
-              <LogOut size={13} className='text-red-600'/>
-              Logout
+              {logoutLoading ? (
+                <>
+                  <Loader2 size={13} className='text-red-600 animate-spin'/>
+                  Logging out...
+                </>
+              ) : (
+                <>
+                  <LogOut size={13} className='text-red-600'/>
+                  Logout
+                </>
+              )}
             </button>
           </div>
         </div>
