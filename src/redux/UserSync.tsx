@@ -5,6 +5,8 @@ import { useAppDispatch } from './hooks'
 import axios from 'axios'
 import { setUser } from './userSlice'
 
+axios.defaults.timeout = 15000
+
 function UserSync() {
     const { status } = useSession()
     const dispatch = useAppDispatch()
