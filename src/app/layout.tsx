@@ -4,6 +4,7 @@ import "./globals.css";
 import "leaflet/dist/leaflet.css"
 import ReduxProvider from "@/redux/ReduxProvider";
 import SessProvider from "@/lib/SessProvider";
+import NextTopLoader from "nextjs-toploader"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,6 +38,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
     >
       <body className={`min-h-dvh flex flex-col overflow-x-hidden ${poppins.className} antialiased`}> {/* Changed min-h-full to min-h-dvh & overflow-x-hidden for iOS Safari */}
+        <NextTopLoader
+          color="#000000"
+          initialPosition={0.08}
+          crawlSpeed={200}
+          height={3}
+          crawl={true}
+          showSpinner={false}
+          easing="ease"
+          speed={200}
+        />
         <SessProvider>
           <ReduxProvider>
             {children}
