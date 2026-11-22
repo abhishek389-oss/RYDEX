@@ -29,13 +29,13 @@ export default function Loading() {
       <style>{`
         @keyframes rydexSlide {
           0% {
-            transform: translateX(-100%);
+            transform: translateX(-0%);
           }
           50% {
-            transform: translateX(100%);
+            transform: translateX(200%);
           }
           100% {
-            transform: translateX(220%);
+            transform: translateX(0%);
           }
         }
       `}</style>
