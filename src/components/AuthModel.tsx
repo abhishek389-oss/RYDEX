@@ -1,6 +1,8 @@
 "use client"
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { useAppDispatch } from "@/redux/hooks";
+import { setUser } from "@/redux/userSlice";
 import axios from "axios";
 import { CircleDashed, Eye, EyeOff, Lock, Mail, User } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -16,6 +18,8 @@ type AuthModelProps = {
 export default function AuthModel({ children }: AuthModelProps) {
 
   const router = useRouter()
+  const dispatch = useAppDispatch()
+  const { update: updateSession } = useSession()
 
   const [step, setStep] = useState<"login" | "signup" | "otp">("login");
   const [showPassword, setShowPassword] = useState(false);
@@ -27,6 +31,7 @@ export default function AuthModel({ children }: AuthModelProps) {
   });
 
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [open, setOpen] = useState(false);
@@ -38,22 +43,17 @@ export default function AuthModel({ children }: AuthModelProps) {
     }))
   }
 
-  const { data } = useSession()
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setLoading(true)
     try {
-      const res = await axios.post("/api/auth/register", {
+      await axios.post("/api/auth/register", {
         ...formData,
         email: formData.email.trim().toLowerCase()
       })
       setStep("otp")
-      setLoading(false)
     } catch (error: any) {
-      console.log(error?.response?.data?.message)
-      setLoading(false)
       setError(error?.response?.data?.message ?? "Something went wrong")
     } finally {
       setLoading(false)
@@ -65,17 +65,13 @@ export default function AuthModel({ children }: AuthModelProps) {
     setError("")
     setLoading(true)
     try {
-      const res = await axios.post("/api/auth/verify-email", {
+      await axios.post("/api/auth/verify-email", {
         email: formData.email.trim().toLowerCase(),
         otp: otp.join("")
       })
-      console.log(res.data)
       setOtp(["", "", "", "", "", ""])
       setStep("login")
-      setLoading(false)
     } catch (error: any) {
-      console.log(error)
-      setLoading(false)
       setError(error?.response?.data?.message ?? "Something went wrong")
     } finally {
       setLoading(false)
@@ -99,14 +95,24 @@ export default function AuthModel({ children }: AuthModelProps) {
         return
       }
 
-      console.log("Logged in successfully!")
+      const meRes = await axios.get("/api/auth/user/me")
+      if (meRes?.data) {
+        dispatch(setUser(meRes.data))
+      }
+      await updateSession()
       setOpen(false)
-      window.location.href = "/"
+      router.refresh()
     } catch (error) {
       setError("Something went wrong while logging in")
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleGoogleLogin = () => {
+    if (googleLoading) return
+    setGoogleLoading(true)
+    signIn("google", { callbackUrl: "/" })
   }
 
   const handleChangeOtp = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,11 +164,21 @@ export default function AuthModel({ children }: AuthModelProps) {
 
         <button
           type="button"
-          onClick={() => signIn("google", { callbackUrl: "/" })}
-          className="mt-3.5 w-full h-10 rounded-xl border border-black/15 bg-white text-black flex items-center justify-center gap-2.5 text-xs font-semibold hover:bg-black hover:text-white transition cursor-pointer"
+          disabled={googleLoading || loading}
+          onClick={handleGoogleLogin}
+          className="mt-3.5 w-full h-10 rounded-xl border border-black/15 bg-white text-black flex items-center justify-center gap-2.5 text-xs font-semibold hover:bg-black hover:text-white disabled:opacity-60 transition cursor-pointer"
         >
-          <Image src="/google.png" alt="google" width={20} height={20} />
-          Continue with Google
+          {googleLoading ? (
+            <>
+              <CircleDashed size={16} className="animate-spin" />
+              <span>Redirecting...</span>
+            </>
+          ) : (
+            <>
+              <Image src="/google.png" alt="google" width={20} height={20} />
+              Continue with Google
+            </>
+          )}
         </button>
 
         <div className="flex items-center gap-3 my-4">

@@ -10,7 +10,7 @@ import Nav from '@/components/Nav'
 export default function PendingRequestPage() {
   const [bookings, setBookings] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-  const [actionId, setActionId] = useState<string | null>(null)
+  const [actionState, setActionState] = useState<{ id: string; type: "accept" | "reject" } | null>(null)
   const userData = useAppSelector((state) => state.user.userData)
 
   const fetchPendingRequests = async () => {
@@ -49,8 +49,8 @@ export default function PendingRequestPage() {
   }, [userData]);
 
   const handleAccept = async (id: string) => {
-    if (actionId) return;
-    setActionId(id);
+    if (actionState) return;
+    setActionState({ id, type: "accept" });
     try {
       const { data } = await axios.get(`/api/partner/bookings/${id}/accept`);
       if (data?.success) {
@@ -59,13 +59,13 @@ export default function PendingRequestPage() {
     } catch (error) {
       console.log("Accept error:", error);
     } finally {
-      setActionId(null);
+      setActionState(null);
     }
   };
 
   const handleReject = async (id: string) => {
-    if (actionId) return;
-    setActionId(id);
+    if (actionState) return;
+    setActionState({ id, type: "reject" });
     try {
       const { data } = await axios.get(`/api/partner/bookings/${id}/reject`);
       if (data?.success) {
@@ -74,7 +74,7 @@ export default function PendingRequestPage() {
     } catch (error) {
       console.log("Reject error:", error);
     } finally {
-      setActionId(null);
+      setActionState(null);
     }
   };
 
@@ -115,7 +115,10 @@ export default function PendingRequestPage() {
         ) : (
           <div className="space-y-4">
             {bookings.map((b: any, index) => {
-              const isBusy = actionId === b._id;
+              const isBusy = actionState?.id === b._id;
+              const isRejecting = isBusy && actionState?.type === "reject";
+              const isAccepting = isBusy && actionState?.type === "accept";
+
               return (
                 <motion.div
                   key={b._id || index}
@@ -171,9 +174,9 @@ export default function PendingRequestPage() {
                           type="button"
                           disabled={isBusy}
                           onClick={() => handleReject(b._id)}
-                          className="flex-1 lg:flex-none px-5 py-2.5 rounded-xl border border-zinc-300 bg-white hover:bg-zinc-100 disabled:opacity-50 text-zinc-800 text-xs font-bold transition-colors cursor-pointer touch-manipulation"
+                          className="flex-1 lg:flex-none px-5 py-2.5 rounded-xl border border-zinc-300 bg-white hover:bg-zinc-100 disabled:opacity-50 text-zinc-800 text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 touch-manipulation"
                         >
-                          Reject
+                          {isRejecting ? <Loader2 size={14} className="animate-spin" /> : "Reject"}
                         </button>
                         <button
                           type="button"
@@ -181,7 +184,7 @@ export default function PendingRequestPage() {
                           onClick={() => handleAccept(b._id)}
                           className="flex-1 lg:flex-none px-6 py-2.5 rounded-xl bg-zinc-900 hover:bg-black disabled:opacity-50 text-white text-xs font-bold transition-colors shadow-xs cursor-pointer flex items-center justify-center gap-1.5 touch-manipulation"
                         >
-                          {isBusy ? <Loader2 size={14} className="animate-spin" /> : "Accept Ride"}
+                          {isAccepting ? <Loader2 size={14} className="animate-spin" /> : "Accept Ride"}
                         </button>
                       </div>
                     </div>

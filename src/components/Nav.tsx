@@ -8,7 +8,7 @@ import AuthModel from './AuthModel'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { setUser } from '@/redux/userSlice'
 import { signOut, useSession } from 'next-auth/react'
-import { ChevronRight, Loader2, LogOut, Menu, UserPlus, X } from 'lucide-react'
+import { Loader2, LogOut, Menu, UserPlus, X } from 'lucide-react'
 import axios from 'axios'
 import { getSocket } from '@/lib/socket'
 
@@ -25,6 +25,7 @@ function Nav() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [pendingCount, setPendingCount] = useState<number>(0)
   const [toggleLoading, setToggleLoading] = useState(false)
+  const [logoutLoading, setLogoutLoading] = useState(false)
 
   useEffect(() => {
     setMenuOpen(false)
@@ -69,9 +70,15 @@ function Nav() {
   }, [userData])
 
   const handleLogOut = async () => {
-    dispatch(setUser(null))
-    await signOut({ callbackUrl: "/" })
-    setProfileOpen(false)
+    if (logoutLoading) return
+    setLogoutLoading(true)
+    try {
+      dispatch(setUser(null))
+      await signOut({ callbackUrl: "/" })
+      setProfileOpen(false)
+    } finally {
+      setLogoutLoading(false)
+    }
   }
 
   const handleBookingsClick = (e: React.MouseEvent) => {
@@ -118,7 +125,7 @@ function Nav() {
   return (
     <>
       <AnimatePresence>
-        {toggleLoading && userData && (
+        {(toggleLoading || logoutLoading) && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -134,7 +141,11 @@ function Nav() {
               <Loader2 size={20} className="animate-spin text-black shrink-0" />
               <div>
                 <p className="text-sm font-bold text-gray-900">
-                  {userData.role === "partner" ? "Switching to User Mode..." : "Switching to Partner Mode..."}
+                  {logoutLoading
+                    ? "Logging out..."
+                    : userData?.role === "partner"
+                      ? "Switching to User Mode..."
+                      : "Switching to Partner Mode..."}
                 </p>
                 <p className="text-[11px] text-gray-500">Please wait a moment</p>
               </div>
@@ -305,14 +316,15 @@ function Nav() {
 
                           <button
                             type="button"
+                            disabled={logoutLoading}
                             onClick={() => {
                               setProfileOpen(false)
                               handleLogOut()
                             }}
-                            className='w-full text-left px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 rounded-xl transition flex items-center gap-2.5 cursor-pointer'
+                            className='w-full text-left px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-60 rounded-xl transition flex items-center gap-2.5 cursor-pointer'
                           >
-                            <LogOut size={15} className='text-red-500' />
-                            <span>LogOut</span>
+                            {logoutLoading ? <Loader2 size={15} className='text-red-500 animate-spin' /> : <LogOut size={15} className='text-red-500' />}
+                            <span>{logoutLoading ? "Logging out..." : "LogOut"}</span>
                           </button>
                         </div>
                       </motion.div>
@@ -524,11 +536,12 @@ function Nav() {
 
                 <button
                   type="button"
-                  className='w-full flex items-center gap-2.5 px-2 py-2 text-xs font-medium text-red-600 hover:bg-red-100 active:bg-red-50 rounded-xl cursor-pointer transition touch-manipulation'
+                  disabled={logoutLoading}
+                  className='w-full flex items-center gap-2.5 px-2 py-2 text-xs font-medium text-red-600 hover:bg-red-100 active:bg-red-50 disabled:opacity-60 rounded-xl cursor-pointer transition touch-manipulation'
                   onClick={() => handleLogOut()}
                 >
-                  <LogOut size={15} />
-                  <span>LogOut</span>
+                  {logoutLoading ? <Loader2 size={15} className='animate-spin' /> : <LogOut size={15} />}
+                  <span>{logoutLoading ? "Logging out..." : "LogOut"}</span>
                 </button>
               </div>
             </motion.div>

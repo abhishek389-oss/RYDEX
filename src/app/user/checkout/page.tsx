@@ -74,6 +74,8 @@ function CheckoutContent() {
 
   const [status, setStatus] = useState<CheckoutStatus>("idle");
   const [loading, setLoading] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [navigating, setNavigating] = useState(false);
   const [booking, setBooking] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "online">("cash");
 
@@ -99,10 +101,9 @@ function CheckoutContent() {
         setBooking(data.booking);
         const b = data.booking;
 
-        // रिफ्रेश बग फिक्स: अगर ड्राइवर एक्सेप्ट कर चुका है लेकिन पेमेंट पेंडिंग है तो सीधे पेमेंट स्क्रीन पर रोके
         if (b.bookingStatus === "requested") {
           setStatus("requested");
-        } else if (b.paymentStatus === "pending" || b.bookingStatus === "awaiting_payment") {
+        } else if (b.paymentStatus === "pending" || b.bookingStatus === "awaiting_payment" || b.bookingStatus === "accepted") {
           setStatus("payment");
         } else if (b.bookingStatus === "confirmed" && (b.paymentStatus === "paid" || b.paymentStatus === "cash")) {
           setStatus("confirmed");
@@ -167,9 +168,15 @@ function CheckoutContent() {
 
         if (latest.bookingStatus === "rejected" || latest.bookingStatus === "cancelled" || latest.bookingStatus === "expired") {
           setStatus("rejected");
-        } else if (latest.bookingStatus === "awaiting_payment" || latest.bookingStatus === "accepted") {
+        } else if (
+          latest.bookingStatus === "awaiting_payment" ||
+          latest.bookingStatus === "accepted" ||
+          (latest.bookingStatus === "confirmed" && (!latest.paymentStatus || latest.paymentStatus === "pending"))
+        ) {
+          setBooking(latest);
           setStatus("awaiting_payment");
-        } else if (latest.bookingStatus === "confirmed") {
+        } else if (latest.bookingStatus === "confirmed" && (latest.paymentStatus === "paid" || latest.paymentStatus === "cash")) {
+          setBooking(latest);
           setStatus("confirmed");
         }
       } catch (err) {
@@ -218,7 +225,8 @@ function CheckoutContent() {
   };
 
   const handleCancel = async () => {
-    if (!booking?._id) return;
+    if (!booking?._id || cancelling) return;
+    setCancelling(true);
     try {
       const { data } = await axios.get(`/api/user/booking/${booking._id}/cancel`);
       if (data?.success) {
@@ -227,6 +235,8 @@ function CheckoutContent() {
       }
     } catch (error) {
       console.log("Cancel error:", error);
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -445,8 +455,14 @@ function CheckoutContent() {
                       onClick={handleRequestBooking}
                       className="w-full h-11 mt-5 bg-zinc-900 hover:bg-black text-white text-xs sm:text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors shadow-xs disabled:opacity-40 cursor-pointer"
                     >
-                      <span>{status === "rejected" ? "Request Again" : "Request Ride"}</span>
-                      <ArrowRight size={14} />
+                      {loading ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <>
+                          <span>{status === "rejected" ? "Request Again" : "Request Ride"}</span>
+                          <ArrowRight size={14} />
+                        </>
+                      )}
                     </motion.button>
                   </motion.div>
                 )}
@@ -480,11 +496,21 @@ function CheckoutContent() {
                     </div>
                     <motion.button
                       whileTap={{ scale: 0.95 }}
+                      disabled={cancelling}
                       onClick={handleCancel}
-                      className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-500 hover:text-zinc-900 transition-colors border border-zinc-200 hover:border-zinc-400 px-3.5 py-1.5 rounded-lg cursor-pointer mt-1"
+                      className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-500 hover:text-zinc-900 disabled:opacity-50 transition-colors border border-zinc-200 hover:border-zinc-400 px-3.5 py-1.5 rounded-lg cursor-pointer mt-1"
                     >
-                      <XCircle size={12} />
-                      <span>Cancel Request</span>
+                      {cancelling ? (
+                        <>
+                          <Loader2 size={12} className="animate-spin" />
+                          <span>Cancelling...</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle size={12} />
+                          <span>Cancel Request</span>
+                        </>
+                      )}
                     </motion.button>
                   </motion.div>
                 )}
@@ -644,11 +670,21 @@ function CheckoutContent() {
                     <motion.button
                       whileTap={{ scale: 0.97 }}
                       whileHover={{ scale: 1.02 }}
-                      onClick={() => router.push(`/user/ride/${booking?._id}`)}
-                      className="mt-2 flex items-center gap-2 bg-zinc-900 hover:bg-black text-white text-xs font-bold px-6 py-2.5 rounded-xl transition-colors shadow-xs cursor-pointer"
+                      disabled={navigating}
+                      onClick={() => {
+                        setNavigating(true);
+                        router.push(`/user/ride/${booking?._id}`);
+                      }}
+                      className="mt-2 flex items-center gap-2 bg-zinc-900 hover:bg-black disabled:opacity-60 text-white text-xs font-bold px-6 py-2.5 rounded-xl transition-colors shadow-xs cursor-pointer"
                     >
-                      <span>Track Your Ride</span>
-                      <ArrowRight size={14} />
+                      {navigating ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <>
+                          <span>Track Your Ride</span>
+                          <ArrowRight size={14} />
+                        </>
+                      )}
                     </motion.button>
                   </motion.div>
                 )}
