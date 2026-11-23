@@ -15,6 +15,12 @@ type AuthModelProps = {
   children: React.ReactNode
 }
 
+const DEMO_ACCOUNTS = [
+  { role: "User", email: "rydex.user@gmail.com", password: "rydex.user" },
+  { role: "Partner", email: "rydex.partner@gmail.com", password: "rydex.partner" },
+  { role: "Admin", email: "rydex.admin@gmail.com", password: "rydex.admin07" },
+]
+
 export default function AuthModel({ children }: AuthModelProps) {
 
   const router = useRouter()
@@ -40,6 +46,15 @@ export default function AuthModel({ children }: AuthModelProps) {
     setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value
+    }))
+  }
+
+  const handleFillDemo = (email: string, password: string) => {
+    setError("")
+    setFormData((prev) => ({
+      ...prev,
+      email,
+      password
     }))
   }
 
@@ -151,7 +166,7 @@ export default function AuthModel({ children }: AuthModelProps) {
         {children}
       </DialogTrigger>
 
-      <DialogContent className="w-[92%] sm:max-w-97.5 bg-white border border-black/10 text-black rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.15)]">
+      <DialogContent className="w-[92%] sm:max-w-97.5 bg-white border border-black/10 text-black rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.15)] max-h-[92dvh] overflow-y-auto">
         <DialogHeader className="text-center space-y-0.5">
           <DialogTitle className="text-2xl font-extrabold tracking-widest text-center text-black">
             RYDEX
@@ -247,7 +262,34 @@ export default function AuthModel({ children }: AuthModelProps) {
                 </button>
               </div>
 
-              <p className="mt-3.5 text-center text-xs text-gray-500">
+              <div className="mt-3.5 p-2.5 rounded-xl bg-gray-50 border border-black/10">
+                <p className="text-[11px] font-semibold text-gray-600 mb-2">
+                  Demo Credentials (Click to auto-fill)
+                </p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {DEMO_ACCOUNTS.map((acc) => (
+                    <button
+                      key={acc.role}
+                      type="button"
+                      onClick={() => handleFillDemo(acc.email, acc.password)}
+                      className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold border transition cursor-pointer ${
+                        formData.email === acc.email
+                          ? "bg-black text-white border-black"
+                          : "bg-white text-black border-black/15 hover:border-black"
+                      }`}
+                    >
+                      {acc.role}
+                    </button>
+                  ))}
+                </div>
+                {formData.email && DEMO_ACCOUNTS.some((a) => a.email === formData.email) && (
+                  <p className="mt-1.5 text-[10px] text-gray-500 truncate">
+                    {formData.email} • {formData.password}
+                  </p>
+                )}
+              </div>
+
+              <p className="mt-3 text-center text-xs text-gray-500">
                 Dont't have an account?{" "}
                 <button
                   type="button"
